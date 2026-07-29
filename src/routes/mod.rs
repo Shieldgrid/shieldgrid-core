@@ -10,6 +10,7 @@ use std::sync::Arc;
 use crate::connectors::Connector;
 
 pub mod alerts;
+pub mod audit;
 pub mod auth;
 pub mod cases;
 pub mod health;
@@ -40,6 +41,10 @@ pub fn build_router(state: AppState) -> Router {
         .route(
             "/api/v1/auth/login",
             axum::routing::post(auth::login_handler),
+        )
+        .route(
+            "/api/v1/audit",
+            axum::routing::get(audit::list_audit_log_handler),
         )
         .route(
             "/api/v1/cases",
