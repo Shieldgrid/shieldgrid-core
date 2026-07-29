@@ -35,7 +35,6 @@ use crate::models::alert::{AlertStatus, NormalizedAlert, Severity};
 // ── WazuhConnector ────────────────────────────────────────────────────────────
 
 /// Connector implementation for Wazuh via its underlying OpenSearch index.
-#[allow(dead_code)]
 pub struct WazuhConnector {
     /// Shared HTTP client — `reqwest::Client` is internally `Arc`-backed and
     /// cheap to clone.
@@ -48,7 +47,6 @@ pub struct WazuhConnector {
     password: String,
 }
 
-#[allow(dead_code)]
 impl WazuhConnector {
     /// Construct a new connector from the given credentials.
     ///

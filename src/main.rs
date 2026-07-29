@@ -4,6 +4,7 @@
 // router and starts the HTTP listener.  All config is read via `config.rs`;
 // nothing else in the codebase should call `std::env::var` directly.
 
+use std::sync::Arc;
 use std::net::SocketAddr;
 use tracing::info;
 
@@ -12,6 +13,9 @@ mod connectors;
 mod models;
 mod routes;
 mod services;
+
+use connectors::wazuh::WazuhConnector;
+use routes::AppState;
 
 #[tokio::main]
 async fn main() {
@@ -28,7 +32,17 @@ async fn main() {
         std::process::exit(1);
     });
 
-    let app = routes::build_router();
+    // Build the connector registry.  Phase 0: Wazuh only.
+    let wazuh = WazuhConnector::new(
+        cfg.opensearch_url.clone(),
+        cfg.opensearch_user.clone(),
+        cfg.opensearch_pass.clone(),
+    );
+    let state = AppState {
+        connectors: vec![Arc::new(wazuh)],
+    };
+
+    let app = routes::build_router(state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], cfg.port));
     let listener = tokio::net::TcpListener::bind(addr)

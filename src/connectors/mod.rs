@@ -19,7 +19,6 @@ pub mod wazuh;
 ///
 /// Returned by [`Connector::health_check`] and surfaced in the `/health`
 /// endpoint response.
-#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "status", rename_all = "lowercase")]
 pub enum HealthStatus {
@@ -28,6 +27,7 @@ pub enum HealthStatus {
 
     /// The connector is reachable but operating in a degraded state
     /// (e.g. elevated latency, partial index availability).
+    #[allow(dead_code)]
     Degraded {
         /// Human-readable explanation of the degraded condition.
         reason: String,
@@ -52,7 +52,6 @@ pub enum HealthStatus {
 ///   bound), sorted however is natural for the upstream source.
 /// - `health_check` must **never panic** — if the upstream is unreachable it
 ///   returns [`HealthStatus::Down`], not an error.
-#[allow(dead_code)]
 #[async_trait]
 pub trait Connector: Send + Sync {
     /// A short, stable identifier for this connector (e.g. `"wazuh"`).

@@ -15,7 +15,6 @@ use uuid::Uuid;
 ///
 /// Connectors map their native severity scale (e.g. Wazuh rule levels 1–15)
 /// into one of these five buckets.
-#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Severity {
@@ -37,7 +36,6 @@ pub enum Severity {
 ///
 /// Transitions (Open → Acknowledged → Closed) will be driven by the case
 /// management layer introduced in Phase 1.
-#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AlertStatus {
