@@ -53,8 +53,13 @@ impl WazuhConnector {
     /// No network call is made during construction — the connector is
     /// lazily connected on first use.
     pub fn new(base_url: String, username: String, password: String) -> Self {
+        let client = Client::builder()
+            .danger_accept_invalid_certs(true)
+            .build()
+            .expect("failed to build reqwest client");
+
         Self {
-            client: Client::new(),
+            client,
             base_url,
             username,
             password,
