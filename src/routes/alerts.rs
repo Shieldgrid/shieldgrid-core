@@ -63,7 +63,7 @@ pub async fn alerts_handler(
     }
 
     // Sort merged results newest-first.
-    all_alerts.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+    all_alerts.sort_by_key(|b| std::cmp::Reverse(b.timestamp));
 
     Json(all_alerts)
 }
