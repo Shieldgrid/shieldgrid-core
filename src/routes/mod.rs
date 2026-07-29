@@ -1,8 +1,8 @@
-/// Route definitions for the Shieldgrid API.
-///
-/// `build_router` is the single construction point for the Axum [`Router`].
-/// It accepts [`AppState`] containing the registered connectors so every
-/// handler can reach them via Axum's state extraction.
+//! Route definitions for the Shieldgrid API.
+//!
+//! `build_router` is the single construction point for the Axum [`Router`].
+//! It accepts [`AppState`] containing the registered connectors so every
+//! handler can reach them via Axum's state extraction.
 
 use axum::{routing::get, Router};
 use std::sync::Arc;

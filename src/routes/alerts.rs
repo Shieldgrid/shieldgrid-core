@@ -1,20 +1,20 @@
-/// `GET /api/v1/alerts` — alerts from all registered connectors, normalised
-/// and merged.
-///
-/// # Query parameters
-///
-/// | Parameter | Type | Default | Description |
-/// |---|---|---|---|
-/// | `since` | RFC 3339 timestamp | 24 h ago | Lower bound (exclusive) on alert timestamp |
-///
-/// # Response
-///
-/// Always returns **HTTP 200** with a JSON array of [`NormalizedAlert`].
-/// Returns an empty array `[]` if no connectors are registered or none have
-/// alerts newer than `since`.
-///
-/// **Known Phase 0 limitation:** results are capped at 500 per connector.
-/// Pagination is deferred to Phase 1.
+//! `GET /api/v1/alerts` — alerts from all registered connectors, normalised
+//! and merged.
+//!
+//! # Query parameters
+//!
+//! | Parameter | Type | Default | Description |
+//! |---|---|---|---|
+//! | `since` | RFC 3339 timestamp | 24 h ago | Lower bound (exclusive) on alert timestamp |
+//!
+//! # Response
+//!
+//! Always returns **HTTP 200** with a JSON array of [`NormalizedAlert`].
+//! Returns an empty array `[]` if no connectors are registered or none have
+//! alerts newer than `since`.
+//!
+//! **Known Phase 0 limitation:** results are capped at 500 per connector.
+//! Pagination is deferred to Phase 1.
 
 use axum::{extract::{Query, State}, Json};
 use chrono::{DateTime, Duration, Utc};

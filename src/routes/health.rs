@@ -1,21 +1,21 @@
-/// `GET /health` — reports the API's own status plus the health of every
-/// registered connector.
-///
-/// # Response
-///
-/// Always returns **HTTP 200**.  The API itself being up is what the 200
-/// signals.  Individual connector statuses are embedded in the body so a
-/// caller can distinguish "API up, Wazuh down" from "everything healthy".
-///
-/// ```json
-/// {
-///   "status": "ok",
-///   "connectors": [
-///     { "status": "healthy", "id": "wazuh" },
-///     { "status": "down",    "id": "wazuh", "reason": "connection refused" }
-///   ]
-/// }
-/// ```
+//! `GET /health` — reports the API's own status plus the health of every
+//! registered connector.
+//!
+//! # Response
+//!
+//! Always returns **HTTP 200**.  The API itself being up is what the 200
+//! signals.  Individual connector statuses are embedded in the body so a
+//! caller can distinguish "API up, Wazuh down" from "everything healthy".
+//!
+//! ```json
+//! {
+//!   "status": "ok",
+//!   "connectors": [
+//!     { "status": "healthy", "id": "wazuh" },
+//!     { "status": "down",    "id": "wazuh", "reason": "connection refused" }
+//!   ]
+//! }
+//! ```
 
 use axum::{extract::State, Json};
 use serde::Serialize;
