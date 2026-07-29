@@ -53,8 +53,17 @@ impl WazuhConnector {
     /// No network call is made during construction — the connector is
     /// lazily connected on first use.
     pub fn new(base_url: String, username: String, password: String) -> Self {
+        let insecure_tls = std::env::var("WAZUH_INSECURE_TLS")
+            .unwrap_or_else(|_| "false".to_string())
+            .to_lowercase()
+            == "true";
+
+        if insecure_tls {
+            tracing::warn!("WAZUH_INSECURE_TLS is true. The Wazuh connector will accept invalid certificates.");
+        }
+
         let client = Client::builder()
-            .danger_accept_invalid_certs(true)
+            .danger_accept_invalid_certs(insecure_tls)
             .build()
             .expect("failed to build reqwest client");
 
