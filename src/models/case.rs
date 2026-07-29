@@ -25,3 +25,9 @@ pub struct UpdateCaseRequest {
     pub status: Option<String>,
     pub assigned_to: Option<Uuid>,
 }
+
+/// Request body for linking an alert to a case.
+#[derive(Debug, Deserialize)]
+pub struct LinkAlertRequest {
+    pub alert_id: String,
+}

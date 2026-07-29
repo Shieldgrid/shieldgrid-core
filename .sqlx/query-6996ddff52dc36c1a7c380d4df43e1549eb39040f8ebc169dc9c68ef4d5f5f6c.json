@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM case_alerts WHERE case_id = $1 AND alert_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6996ddff52dc36c1a7c380d4df43e1549eb39040f8ebc169dc9c68ef4d5f5f6c"
+}
