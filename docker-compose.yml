@@ -1,0 +1,53 @@
+# ── Services ──────────────────────────────────────────────────────────────────
+services:
+
+  # ── shieldgrid-core API ──────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: shieldgrid-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: "3000"
+      DATABASE_URL: "postgres://shieldgrid:shieldgrid@postgres:5432/shieldgrid"
+      # Point at your local Wazuh/OpenSearch when you have one.
+      # For Phase 0 local dev without a running OpenSearch the API still
+      # starts; /health will report the connector as "down".
+      OPENSEARCH_URL: "${OPENSEARCH_URL:-http://localhost:9200}"
+      OPENSEARCH_USER: "${OPENSEARCH_USER:-admin}"
+      OPENSEARCH_PASS: "${OPENSEARCH_PASS:-admin}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  # ── PostgreSQL ───────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: shieldgrid-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: shieldgrid
+      POSTGRES_PASSWORD: shieldgrid
+      POSTGRES_DB: shieldgrid
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shieldgrid"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+# ── Volumes ───────────────────────────────────────────────────────────────────
+volumes:
+  postgres_data:
