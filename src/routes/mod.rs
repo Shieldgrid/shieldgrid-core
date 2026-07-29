@@ -23,6 +23,7 @@ pub struct AppState {
     /// All registered connectors.  Empty in tests; populated at startup.
     pub connectors: Vec<Arc<dyn Connector>>,
     /// Connection pool for the PostgreSQL database.
+    #[allow(dead_code)]
     pub db: sqlx::PgPool,
 }
 
