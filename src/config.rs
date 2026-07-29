@@ -34,13 +34,12 @@ pub struct Config {
     /// Secret key used to sign and verify JWT tokens.
     pub jwt_secret: String,
 
-    /// Optional email address to seed the first admin user on startup.
-    /// Defaults to `admin@shieldgrid.local` if password is provided but email is not.
-    pub admin_seed_email: Option<String>,
+    /// Email address to seed the first admin user on startup.
+    pub admin_seed_email: String,
 
-    /// Optional password to seed the first admin user on startup.
-    /// If provided, an admin user is created/updated with this password on startup.
-    pub admin_seed_password: Option<String>,
+    /// Password to seed the first admin user on startup.
+    /// An admin user is created/updated with this password on startup.
+    pub admin_seed_password: String,
 }
 
 impl Config {
@@ -67,8 +66,8 @@ impl Config {
             opensearch_user: require_var("OPENSEARCH_USER")?,
             opensearch_pass: require_var("OPENSEARCH_PASS")?,
             jwt_secret: require_var("JWT_SECRET")?,
-            admin_seed_email: std::env::var("ADMIN_SEED_EMAIL").ok(),
-            admin_seed_password: std::env::var("ADMIN_SEED_PASSWORD").ok(),
+            admin_seed_email: require_var("ADMIN_SEED_EMAIL")?,
+            admin_seed_password: require_var("ADMIN_SEED_PASSWORD")?,
         })
     }
 }
