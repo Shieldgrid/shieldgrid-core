@@ -15,6 +15,7 @@ use uuid::Uuid;
 
 mod config;
 mod connectors;
+mod middleware;
 mod models;
 mod routes;
 mod services;

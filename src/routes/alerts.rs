@@ -37,8 +37,11 @@ pub(crate) struct AlertsQuery {
 
 // ── Handler ───────────────────────────────────────────────────────────────────
 
+use crate::middleware::RequireAdmin;
+
 /// Handler for `GET /api/v1/alerts`.
 pub async fn alerts_handler(
+    _auth: RequireAdmin,
     State(state): State<AppState>,
     Query(params): Query<AlertsQuery>,
 ) -> Json<Vec<NormalizedAlert>> {
