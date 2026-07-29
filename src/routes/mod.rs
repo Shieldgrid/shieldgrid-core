@@ -11,6 +11,7 @@ use crate::connectors::Connector;
 
 pub mod alerts;
 pub mod auth;
+pub mod cases;
 pub mod health;
 
 // ── App state ─────────────────────────────────────────────────────────────────
@@ -39,6 +40,14 @@ pub fn build_router(state: AppState) -> Router {
         .route(
             "/api/v1/auth/login",
             axum::routing::post(auth::login_handler),
+        )
+        .route(
+            "/api/v1/cases",
+            axum::routing::get(cases::list_cases_handler).post(cases::create_case_handler),
+        )
+        .route(
+            "/api/v1/cases/{id}",
+            axum::routing::get(cases::get_case_handler).patch(cases::update_case_handler),
         )
         .with_state(state)
 }
