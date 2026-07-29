@@ -10,6 +10,7 @@ use std::sync::Arc;
 use crate::connectors::Connector;
 
 pub mod alerts;
+pub mod auth;
 pub mod health;
 
 // ── App state ─────────────────────────────────────────────────────────────────
@@ -23,8 +24,9 @@ pub struct AppState {
     /// All registered connectors.  Empty in tests; populated at startup.
     pub connectors: Vec<Arc<dyn Connector>>,
     /// Connection pool for the PostgreSQL database.
-    #[allow(dead_code)]
     pub db: sqlx::PgPool,
+    /// Application configuration
+    pub config: Arc<crate::config::Config>,
 }
 
 // ── Router ────────────────────────────────────────────────────────────────────
@@ -34,5 +36,9 @@ pub fn build_router(state: AppState) -> Router {
     Router::new()
         .route("/health", get(health::health_handler))
         .route("/api/v1/alerts", get(alerts::alerts_handler))
+        .route(
+            "/api/v1/auth/login",
+            axum::routing::post(auth::login_handler),
+        )
         .with_state(state)
 }

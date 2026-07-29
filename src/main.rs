@@ -4,9 +4,14 @@
 // router and starts the HTTP listener.  All config is read via `config.rs`;
 // nothing else in the codebase should call `std::env::var` directly.
 
+use argon2::{
+    password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
+    Argon2,
+};
 use std::net::SocketAddr;
 use std::sync::Arc;
-use tracing::info;
+use tracing::{info, warn};
+use uuid::Uuid;
 
 mod config;
 mod connectors;
@@ -51,6 +56,40 @@ async fn main() {
         });
     info!("Database migrations complete.");
 
+    // Seed Admin User if configured
+    if let Some(password) = &cfg.admin_seed_password {
+        let email = cfg
+            .admin_seed_email
+            .as_deref()
+            .unwrap_or("admin@shieldgrid.local");
+        info!("Seeding admin user with email: {}", email);
+
+        let salt = SaltString::generate(&mut OsRng);
+        let password_hash = Argon2::default()
+            .hash_password(password.as_bytes(), &salt)
+            .expect("Failed to hash seed password")
+            .to_string();
+
+        let user_id = Uuid::new_v4();
+
+        let result = sqlx::query!(
+            "INSERT INTO users (id, email, password_hash, role) 
+             VALUES ($1, $2, $3, 'admin')
+             ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash",
+            user_id,
+            email,
+            password_hash
+        )
+        .execute(&db)
+        .await;
+
+        if let Err(e) = result {
+            warn!("Failed to seed admin user: {e}");
+        } else {
+            info!("Admin user successfully seeded/updated.");
+        }
+    }
+
     // Build the connector registry.  Phase 0: Wazuh only.
     let wazuh = WazuhConnector::new(
         cfg.opensearch_url.clone(),
@@ -60,6 +99,7 @@ async fn main() {
     let state = AppState {
         connectors: vec![Arc::new(wazuh)],
         db,
+        config: Arc::new(cfg.clone()),
     };
 
     let app = routes::build_router(state);
