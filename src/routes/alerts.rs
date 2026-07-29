@@ -16,7 +16,10 @@
 //! **Known Phase 0 limitation:** results are capped at 500 per connector.
 //! Pagination is deferred to Phase 1.
 
-use axum::{extract::{Query, State}, Json};
+use axum::{
+    extract::{Query, State},
+    Json,
+};
 use chrono::{DateTime, Duration, Utc};
 use serde::Deserialize;
 

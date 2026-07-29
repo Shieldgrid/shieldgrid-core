@@ -78,3 +78,18 @@ Requires Rust (stable toolchain) and a running PostgreSQL instance. See `.env.ex
 ## Contributing
 
 Issues and PRs welcome. Please open an issue before large changes so we can align on approach first.
+
+### Local CI & Git Hooks
+
+To save GitHub Actions resources and catch failures early, we mirror CI checks locally.
+You can run all CI checks (formatting, build, linting, tests) manually via:
+```bash
+./scripts/ci-local.sh
+```
+
+**Recommended:** Wire this script to run automatically before every `git push` by installing the pre-push hook (run once per clone):
+```bash
+./scripts/install-hooks.sh
+```
+
+If you ever genuinely need to bypass the hook (e.g. saving WIP work to a remote branch), use `git push --no-verify`.

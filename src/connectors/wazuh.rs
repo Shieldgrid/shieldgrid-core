@@ -59,7 +59,9 @@ impl WazuhConnector {
             == "true";
 
         if insecure_tls {
-            tracing::warn!("WAZUH_INSECURE_TLS is true. The Wazuh connector will accept invalid certificates.");
+            tracing::warn!(
+                "WAZUH_INSECURE_TLS is true. The Wazuh connector will accept invalid certificates."
+            );
         }
 
         let client = Client::builder()
@@ -263,10 +265,7 @@ mod tests {
         assert_eq!(alert.source, "web-server-1");
         assert_eq!(alert.severity, Severity::High); // level 12 → High
         assert_eq!(alert.status, AlertStatus::Open);
-        assert_eq!(
-            alert.timestamp.to_rfc3339(),
-            "2026-07-29T09:00:00+00:00"
-        );
+        assert_eq!(alert.timestamp.to_rfc3339(), "2026-07-29T09:00:00+00:00");
     }
 
     #[test]
@@ -308,6 +307,9 @@ mod tests {
         let alert = map_hit(&hit).unwrap();
         // The full _source must be present for audit purposes.
         assert_eq!(alert.raw_payload["rule"]["level"], 12);
-        assert_eq!(alert.raw_payload["full_log"], "Jul 29 09:00:00 web-server-1 kernel: suspicious activity");
+        assert_eq!(
+            alert.raw_payload["full_log"],
+            "Jul 29 09:00:00 web-server-1 kernel: suspicious activity"
+        );
     }
 }

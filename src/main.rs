@@ -4,8 +4,8 @@
 // router and starts the HTTP listener.  All config is read via `config.rs`;
 // nothing else in the codebase should call `std::env::var` directly.
 
-use std::sync::Arc;
 use std::net::SocketAddr;
+use std::sync::Arc;
 use tracing::info;
 
 mod config;

@@ -49,9 +49,21 @@ pub(crate) struct ConnectorHealthEntry {
 impl ConnectorHealthEntry {
     fn from_connector_status(id: String, hs: HealthStatus) -> Self {
         match hs {
-            HealthStatus::Healthy => Self { id, status: "healthy".into(), reason: None },
-            HealthStatus::Degraded { reason } => Self { id, status: "degraded".into(), reason: Some(reason) },
-            HealthStatus::Down { reason } => Self { id, status: "down".into(), reason: Some(reason) },
+            HealthStatus::Healthy => Self {
+                id,
+                status: "healthy".into(),
+                reason: None,
+            },
+            HealthStatus::Degraded { reason } => Self {
+                id,
+                status: "degraded".into(),
+                reason: Some(reason),
+            },
+            HealthStatus::Down { reason } => Self {
+                id,
+                status: "down".into(),
+                reason: Some(reason),
+            },
         }
     }
 }
@@ -63,9 +75,7 @@ impl ConnectorHealthEntry {
 /// Polls every registered connector's `health_check()` concurrently and
 /// returns the aggregated result.  Never returns a non-200 status — if a
 /// connector is unreachable the API should still be considered up.
-pub async fn health_handler(
-    State(state): State<AppState>,
-) -> Json<HealthResponse> {
+pub async fn health_handler(State(state): State<AppState>) -> Json<HealthResponse> {
     let connectors: &[Arc<dyn Connector>] = &state.connectors;
 
     // Poll all connectors concurrently.

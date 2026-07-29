@@ -48,9 +48,11 @@ impl Config {
         dotenvy::dotenv().ok();
 
         Ok(Config {
-            port: require_var("PORT")?.parse().map_err(|_| anyhow!("PORT must be a valid u16"))?,
-            database_url:    require_var("DATABASE_URL")?,
-            opensearch_url:  require_var("OPENSEARCH_URL")?,
+            port: require_var("PORT")?
+                .parse()
+                .map_err(|_| anyhow!("PORT must be a valid u16"))?,
+            database_url: require_var("DATABASE_URL")?,
+            opensearch_url: require_var("OPENSEARCH_URL")?,
             opensearch_user: require_var("OPENSEARCH_USER")?,
             opensearch_pass: require_var("OPENSEARCH_PASS")?,
         })
