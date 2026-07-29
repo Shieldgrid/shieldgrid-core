@@ -1,0 +1,21 @@
+[package]
+name = "shieldgrid-core"
+version = "0.1.0"
+edition = "2021"
+description = "Shieldgrid SOC platform core API"
+license = "AGPL-3.0"
+
+[dependencies]
+anyhow      = "1"
+async-trait = "0.1"
+axum        = "0.8"
+chrono      = { version = "0.4", features = ["serde"] }
+dotenvy     = "0.15"
+reqwest     = { version = "0.12", features = ["json"] }
+serde       = { version = "1", features = ["derive"] }
+serde_json  = "1"
+sqlx        = { version = "0.8", features = ["postgres", "runtime-tokio-rustls"] }
+tokio       = { version = "1", features = ["full"] }
+tracing     = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+uuid        = { version = "1", features = ["v4", "serde"] }
