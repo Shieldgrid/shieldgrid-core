@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO audit_log (id, actor_id, action, target) VALUES ($1, $2, 'attach_alert', $3)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f7c45b83f701a13052f61ec0dc3ea8dea5e013d03f4b16799e8cbe0aecd0fc5a"
+}
