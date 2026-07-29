@@ -32,6 +32,25 @@ async fn main() {
         std::process::exit(1);
     });
 
+    let db = sqlx::postgres::PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&cfg.database_url)
+        .await
+        .unwrap_or_else(|e| {
+            eprintln!("Failed to connect to database: {e}");
+            std::process::exit(1);
+        });
+
+    info!("Running database migrations...");
+    sqlx::migrate!("./migrations")
+        .run(&db)
+        .await
+        .unwrap_or_else(|e| {
+            eprintln!("Failed to run migrations: {e}");
+            std::process::exit(1);
+        });
+    info!("Database migrations complete.");
+
     // Build the connector registry.  Phase 0: Wazuh only.
     let wazuh = WazuhConnector::new(
         cfg.opensearch_url.clone(),
@@ -40,6 +59,7 @@ async fn main() {
     );
     let state = AppState {
         connectors: vec![Arc::new(wazuh)],
+        db,
     };
 
     let app = routes::build_router(state);
