@@ -31,6 +31,7 @@ use uuid::Uuid;
 
 use crate::connectors::{Connector, HealthStatus};
 use crate::models::alert::{AlertStatus, NormalizedAlert, Severity};
+use crate::models::action::{ActionResult, ResponseAction};
 
 // ── WazuhConnector ────────────────────────────────────────────────────────────
 
@@ -166,6 +167,15 @@ impl Connector for WazuhConnector {
 
         let alerts = hits.iter().filter_map(map_hit).collect();
         Ok(alerts)
+    }
+
+    async fn push_action(&self, _action: ResponseAction) -> Result<ActionResult> {
+        Ok(ActionResult {
+            success: false,
+            detail: "Actions are not supported by the Wazuh connector.".to_string(),
+            is_timeout: false,
+            timestamp: Utc::now(),
+        })
     }
 }
 

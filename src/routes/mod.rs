@@ -89,6 +89,10 @@ pub fn build_router(state: AppState) -> Router {
             "/api/v1/cases/{id}/alerts/{alert_id}",
             axum::routing::delete(cases::detach_alert_handler),
         )
+        .route(
+            "/api/v1/cases/{id}/actions",
+            axum::routing::get(cases::list_case_actions_handler).post(cases::execute_action_handler),
+        )
         .layer(cors)
         .with_state(state)
 }

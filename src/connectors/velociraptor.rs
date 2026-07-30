@@ -7,12 +7,12 @@ use tonic::transport::{Certificate, Channel, ClientTlsConfig, Endpoint, Identity
 
 use crate::config::Config;
 use crate::connectors::{Connector, HealthStatus};
-use crate::models::alert::{AlertStatus, NormalizedAlert};
+use crate::models::alert::{AlertStatus, NormalizedAlert, Severity};
+use crate::models::action::{ActionResult, ResponseAction};
 
 pub mod api {
     tonic::include_proto!("proto");
 }
-use crate::models::alert::Severity;
 use api::api_client::ApiClient;
 use api::{VqlCollectorArgs, VqlRequest};
 use uuid::Uuid;
@@ -168,6 +168,106 @@ impl Connector for VelociraptorConnector {
         }
 
         Ok(alerts)
+    }
+
+    async fn push_action(&self, action: ResponseAction) -> Result<ActionResult> {
+        let (artifact, remove_policy) = match action.action_type.as_str() {
+            "isolate" => ("Linux.Remediation.Quarantine", "N"),
+            "unisolate" => ("Linux.Remediation.Quarantine", "Y"),
+            _ => return Ok(ActionResult {
+                success: false,
+                detail: format!("Unsupported action type: {}", action.action_type),
+                is_timeout: false,
+                timestamp: Utc::now(),
+            }),
+        };
+
+        // 1. Validate Target
+        let check_vql = format!("SELECT os_info.hostname, last_seen_at FROM clients(client_id='{}')", action.target_id);
+        let check_rows = self.run_query(&check_vql).await.context("Failed to query client status")?;
+        
+        if check_rows.is_empty() {
+            return Ok(ActionResult {
+                success: false,
+                detail: format!("Target {} not found in Velociraptor", action.target_id),
+                is_timeout: false,
+                timestamp: Utc::now(),
+            });
+        }
+
+        let last_seen_at_usec = check_rows[0].get("last_seen_at")
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0);
+        
+        let now_usec = Utc::now().timestamp_micros();
+        let ten_minutes_usec = 10 * 60 * 1_000_000;
+        
+        if now_usec - last_seen_at_usec > ten_minutes_usec {
+            return Ok(ActionResult {
+                success: false,
+                detail: format!("Target {} is offline (last seen more than 10 mins ago)", action.target_id),
+                is_timeout: false,
+                timestamp: Utc::now(),
+            });
+        }
+
+        // 2. Trigger Action
+        let trigger_vql = format!(
+            "SELECT collect_client(client_id='{}', artifacts='{}', env=dict(RemovePolicy='{}')) AS flow_id FROM scope()",
+            action.target_id, artifact, remove_policy
+        );
+        let trigger_rows = self.run_query(&trigger_vql).await.context("Failed to trigger collection")?;
+        
+        let flow_id = trigger_rows.get(0)
+            .and_then(|r| r.get("flow_id"))
+            .and_then(|v| v.as_str());
+
+        let flow_id = match flow_id {
+            Some(id) => id,
+            None => {
+                return Ok(ActionResult {
+                    success: false,
+                    detail: format!("Failed to schedule artifact on {}", action.target_id),
+                    is_timeout: false,
+                    timestamp: Utc::now(),
+                });
+            }
+        };
+
+        // 3. Poll for Success
+        for _ in 0..15 {
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            
+            let poll_vql = format!("SELECT state FROM flows(client_id='{}', flow_id='{}')", action.target_id, flow_id);
+            let poll_rows = self.run_query(&poll_vql).await.unwrap_or_default();
+            
+            if let Some(row) = poll_rows.first() {
+                let state = row.get("state").and_then(|v| v.as_str()).unwrap_or("UNKNOWN");
+                if state == "FINISHED" {
+                    return Ok(ActionResult {
+                        success: true,
+                        detail: format!("Action {} completed successfully", action.action_type),
+                        is_timeout: false,
+                        timestamp: Utc::now(),
+                    });
+                } else if state == "ERROR" {
+                    return Ok(ActionResult {
+                        success: false,
+                        detail: format!("Action {} failed during execution", action.action_type),
+                        is_timeout: false,
+                        timestamp: Utc::now(),
+                    });
+                }
+            }
+        }
+
+        // Timeout
+        Ok(ActionResult {
+            success: false,
+            detail: format!("Action {} timed out. Outcome unknown.", action.action_type),
+            is_timeout: true,
+            timestamp: Utc::now(),
+        })
     }
 }
 

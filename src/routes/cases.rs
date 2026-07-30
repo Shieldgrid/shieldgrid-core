@@ -251,3 +251,100 @@ pub async fn list_case_alerts_handler(
         }
     }
 }
+
+/// POST /api/v1/cases/:id/actions
+pub async fn execute_action_handler(
+    auth: RequireAdmin,
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+    Json(payload): Json<crate::models::action::ActionRequest>,
+) -> impl IntoResponse {
+    let actor_id = match Uuid::parse_str(&auth.0.sub) {
+        Ok(uid) => uid,
+        Err(_) => return StatusCode::BAD_REQUEST.into_response(),
+    };
+
+    let connector = match state.connectors.iter().find(|c| c.id() == payload.connector_id) {
+        Some(c) => c,
+        None => return (StatusCode::BAD_REQUEST, "Connector not found").into_response(),
+    };
+
+    let target_str = format!("case:{}:target:{}:type:{}", id, payload.target_id, payload.action_type);
+
+    let audit_id = Uuid::new_v4();
+    let _ = sqlx::query!(
+        "INSERT INTO audit_log (id, actor_id, action, target) VALUES ($1, $2, 'action_request', $3)",
+        audit_id,
+        actor_id,
+        target_str
+    )
+    .execute(&state.db)
+    .await;
+
+    let action_cmd = crate::models::action::ResponseAction {
+        action_type: payload.action_type.clone(),
+        target_id: payload.target_id.clone(),
+        requested_by: actor_id,
+        case_id: Some(id),
+    };
+
+    let result = connector.push_action(action_cmd).await;
+
+    let (audit_action, detail) = match &result {
+        Ok(res) => {
+            if res.success {
+                ("action_success", res.detail.clone())
+            } else if res.is_timeout {
+                ("action_timeout", res.detail.clone())
+            } else {
+                ("action_failure", res.detail.clone())
+            }
+        }
+        Err(e) => ("action_error", e.to_string()),
+    };
+
+    let final_target_str = format!("{}:detail:{}", target_str, detail);
+    
+    let audit_id2 = Uuid::new_v4();
+    let _ = sqlx::query!(
+        "INSERT INTO audit_log (id, actor_id, action, target) VALUES ($1, $2, $3, $4)",
+        audit_id2,
+        actor_id,
+        audit_action,
+        final_target_str
+    )
+    .execute(&state.db)
+    .await;
+
+    match result {
+        Ok(res) => (StatusCode::OK, Json(res)).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
+    }
+}
+
+/// GET /api/v1/cases/:id/actions
+pub async fn list_case_actions_handler(
+    _auth: RequireAdmin,
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> impl IntoResponse {
+    let target_prefix = format!("case:{}%", id);
+    let result = sqlx::query_as!(
+        crate::models::audit::AuditLog,
+        "SELECT id, actor_id, action, target, timestamp 
+         FROM audit_log 
+         WHERE action LIKE 'action_%' AND target LIKE $1 
+         ORDER BY timestamp DESC",
+         target_prefix
+    )
+    .fetch_all(&state.db)
+    .await;
+
+    match result {
+        Ok(logs) => (StatusCode::OK, Json(logs)).into_response(),
+        Err(e) => {
+            tracing::error!("Failed to list case actions: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}

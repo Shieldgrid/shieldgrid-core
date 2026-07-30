@@ -10,6 +10,7 @@ use chrono::{DateTime, Utc};
 use serde::Serialize;
 
 use crate::models::alert::NormalizedAlert;
+use crate::models::action::{ActionResult, ResponseAction};
 
 pub mod velociraptor;
 pub mod wazuh;
@@ -74,4 +75,9 @@ pub trait Connector: Send + Sync {
     /// Implementations should cap the result set at a reasonable maximum
     /// (e.g. 500) and document any such limit.
     async fn fetch_alerts(&self, since: DateTime<Utc>) -> Result<Vec<NormalizedAlert>>;
+
+    /// Push an action (like isolation or unisolation) to an endpoint via this connector.
+    ///
+    /// Implementations that do not support actions should return a clear "not supported" error.
+    async fn push_action(&self, action: ResponseAction) -> Result<ActionResult>;
 }
