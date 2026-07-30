@@ -1,2 +1,6 @@
 /target/
 .env
+*/target/*velociraptor-docker/etc
+velociraptor-docker/datastore
+velociraptor-docker/api_client.yaml
+vr-spike

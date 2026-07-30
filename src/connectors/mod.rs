@@ -11,6 +11,7 @@ use serde::Serialize;
 
 use crate::models::alert::NormalizedAlert;
 
+pub mod velociraptor;
 pub mod wazuh;
 
 // ── HealthStatus ─────────────────────────────────────────────────────────────
