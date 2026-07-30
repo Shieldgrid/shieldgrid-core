@@ -21,15 +21,12 @@ impl FromRequestParts<AppState> for Claims {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        let auth_header = parts
-            .headers
-            .get(axum::http::header::AUTHORIZATION)
-            .and_then(|value| value.to_str().ok());
+        let jar = axum_extra::extract::cookie::CookieJar::from_headers(&parts.headers);
 
-        let token = match auth_header {
-            Some(header) if header.starts_with("Bearer ") => &header["Bearer ".len()..],
-            _ => {
-                warn!("Missing or invalid Authorization header");
+        let token = match jar.get("jwt_token").map(|c| c.value()) {
+            Some(token) => token,
+            None => {
+                warn!("Missing jwt_token cookie");
                 return Err(StatusCode::UNAUTHORIZED.into_response());
             }
         };

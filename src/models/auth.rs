@@ -10,7 +10,7 @@ pub struct LoginRequest {
 /// Response body for the login endpoint on success.
 #[derive(Debug, Serialize)]
 pub struct LoginResponse {
-    pub token: String,
+    pub message: String,
 }
 
 /// JWT claims embedded in the issued token.

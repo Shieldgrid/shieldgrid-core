@@ -6,7 +6,7 @@
 
 use axum::{routing::get, Router};
 use std::sync::Arc;
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::CorsLayer;
 
 use crate::connectors::Connector;
 
@@ -36,10 +36,26 @@ pub struct AppState {
 
 /// Build the main application router with all registered routes.
 pub fn build_router(state: AppState) -> Router {
+    let allowed_origin = state
+        .config
+        .allowed_origin
+        .parse::<axum::http::HeaderValue>()
+        .expect("ALLOWED_ORIGIN must be a valid HTTP header value");
+
     let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods(Any)
-        .allow_headers(Any);
+        .allow_origin(allowed_origin)
+        .allow_methods([
+            axum::http::Method::GET,
+            axum::http::Method::POST,
+            axum::http::Method::PATCH,
+            axum::http::Method::DELETE,
+            axum::http::Method::OPTIONS,
+        ])
+        .allow_headers([
+            axum::http::header::CONTENT_TYPE,
+            axum::http::header::AUTHORIZATION,
+        ])
+        .allow_credentials(true);
 
     Router::new()
         .route("/health", get(health::health_handler))
@@ -47,6 +63,14 @@ pub fn build_router(state: AppState) -> Router {
         .route(
             "/api/v1/auth/login",
             axum::routing::post(auth::login_handler),
+        )
+        .route(
+            "/api/v1/auth/me",
+            axum::routing::get(auth::me_handler),
+        )
+        .route(
+            "/api/v1/auth/logout",
+            axum::routing::post(auth::logout_handler),
         )
         .route(
             "/api/v1/audit",
