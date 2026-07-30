@@ -1,6 +1,6 @@
 services:
   velociraptor-server:
-    image: ghcr.io/velocidex/velociraptor-server:latest
+    image: ghcr.io/velocidex/velociraptor-server:0.77.1
     ports:
       - "${VELOCIRAPTOR_FRONTEND_PORT}:${VELOCIRAPTOR_FRONTEND_PORT}"
       - "8001:8001"
@@ -12,6 +12,20 @@ services:
       - VELOCIRAPTOR_DATASTORE_PATH=${VELOCIRAPTOR_DATASTORE_PATH}
       - VELOCIRAPTOR_CONFIG_PATH=${VELOCIRAPTOR_CONFIG_PATH}
       - VELOCIRAPTOR_INITIAL_ADMIN_PASSWORD=${VELOCIRAPTOR_INITIAL_ADMIN_PASSWORD}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >
+        if [ ! -f /etc/velociraptor/server.config.yaml ]; then
+          /bin/velociraptor query -f /bin/init.vql &&
+          sed -i 's/127.0.0.1/0.0.0.0/g' /etc/velociraptor/server.config.yaml &&
+          export PASSWORD="$${VELOCIRAPTOR_INITIAL_ADMIN_PASSWORD:-password}" &&
+          export VELOCIRAPTOR_CONFIG=/etc/velociraptor/server.config.yaml &&
+          /bin/velociraptor --config "$$VELOCIRAPTOR_CONFIG" user add admin "$$PASSWORD" --role administrator;
+        fi &&
+        export VELOCIRAPTOR_CONFIG=/etc/velociraptor/server.config.yaml &&
+        exec /bin/velociraptor --config "$$VELOCIRAPTOR_CONFIG" frontend -v
     volumes:
       - ./etc/:/etc/velociraptor/
       - ./datastore/:/datastore/
+      - ../../shieldgrid-docs/velociraptor/:/custom_artifacts/

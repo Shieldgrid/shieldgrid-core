@@ -4,3 +4,9 @@
 velociraptor-docker/datastore
 velociraptor-docker/api_client.yaml
 vr-spike
+velociraptor-docker/etc/
+velociraptor-docker/datastore/
+velociraptor-docker/api_client.yaml
+opensearch_pass.txt
+sec.sh
+velociraptor-docker/custom_entrypoint.sh
