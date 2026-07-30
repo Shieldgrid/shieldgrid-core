@@ -6,6 +6,7 @@
 
 use axum::{routing::get, Router};
 use std::sync::Arc;
+use tower_http::cors::{Any, CorsLayer};
 
 use crate::connectors::Connector;
 
@@ -35,6 +36,11 @@ pub struct AppState {
 
 /// Build the main application router with all registered routes.
 pub fn build_router(state: AppState) -> Router {
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any);
+
     Router::new()
         .route("/health", get(health::health_handler))
         .route("/api/v1/alerts", get(alerts::alerts_handler))
@@ -62,5 +68,6 @@ pub fn build_router(state: AppState) -> Router {
             "/api/v1/cases/{id}/alerts/{alert_id}",
             axum::routing::delete(cases::detach_alert_handler),
         )
+        .layer(cors)
         .with_state(state)
 }
