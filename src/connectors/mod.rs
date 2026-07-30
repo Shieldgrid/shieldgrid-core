@@ -9,8 +9,8 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 
-use crate::models::alert::NormalizedAlert;
 use crate::models::action::{ActionResult, ResponseAction};
+use crate::models::alert::NormalizedAlert;
 
 pub mod velociraptor;
 pub mod wazuh;

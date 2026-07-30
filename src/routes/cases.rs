@@ -264,12 +264,19 @@ pub async fn execute_action_handler(
         Err(_) => return StatusCode::BAD_REQUEST.into_response(),
     };
 
-    let connector = match state.connectors.iter().find(|c| c.id() == payload.connector_id) {
+    let connector = match state
+        .connectors
+        .iter()
+        .find(|c| c.id() == payload.connector_id)
+    {
         Some(c) => c,
         None => return (StatusCode::BAD_REQUEST, "Connector not found").into_response(),
     };
 
-    let target_str = format!("case:{}:target:{}:type:{}", id, payload.target_id, payload.action_type);
+    let target_str = format!(
+        "case:{}:target:{}:type:{}",
+        id, payload.target_id, payload.action_type
+    );
 
     let audit_id = Uuid::new_v4();
     let _ = sqlx::query!(
@@ -304,7 +311,7 @@ pub async fn execute_action_handler(
     };
 
     let final_target_str = format!("{}:detail:{}", target_str, detail);
-    
+
     let audit_id2 = Uuid::new_v4();
     let _ = sqlx::query!(
         "INSERT INTO audit_log (id, actor_id, action, target) VALUES ($1, $2, $3, $4)",
@@ -335,7 +342,7 @@ pub async fn list_case_actions_handler(
          FROM audit_log 
          WHERE action LIKE 'action_%' AND target LIKE $1 
          ORDER BY timestamp DESC",
-         target_prefix
+        target_prefix
     )
     .fetch_all(&state.db)
     .await;

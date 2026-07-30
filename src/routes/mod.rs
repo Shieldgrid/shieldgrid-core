@@ -91,7 +91,8 @@ pub fn build_router(state: AppState) -> Router {
         )
         .route(
             "/api/v1/cases/{id}/actions",
-            axum::routing::get(cases::list_case_actions_handler).post(cases::execute_action_handler),
+            axum::routing::get(cases::list_case_actions_handler)
+                .post(cases::execute_action_handler),
         )
         .layer(cors)
         .with_state(state)

@@ -30,8 +30,8 @@ use serde_json::{json, Value};
 use uuid::Uuid;
 
 use crate::connectors::{Connector, HealthStatus};
-use crate::models::alert::{AlertStatus, NormalizedAlert, Severity};
 use crate::models::action::{ActionResult, ResponseAction};
+use crate::models::alert::{AlertStatus, NormalizedAlert, Severity};
 
 // ── WazuhConnector ────────────────────────────────────────────────────────────
 
