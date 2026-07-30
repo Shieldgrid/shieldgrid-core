@@ -64,10 +64,7 @@ pub fn build_router(state: AppState) -> Router {
             "/api/v1/auth/login",
             axum::routing::post(auth::login_handler),
         )
-        .route(
-            "/api/v1/auth/me",
-            axum::routing::get(auth::me_handler),
-        )
+        .route("/api/v1/auth/me", axum::routing::get(auth::me_handler))
         .route(
             "/api/v1/auth/logout",
             axum::routing::post(auth::logout_handler),
