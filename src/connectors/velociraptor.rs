@@ -234,7 +234,7 @@ impl Connector for VelociraptorConnector {
             .context("Failed to trigger collection")?;
 
         let flow_id = trigger_rows
-            .get(0)
+            .first()
             .and_then(|r| r.get("flow_id"))
             .and_then(|v| v.as_str());
 
