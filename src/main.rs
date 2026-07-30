@@ -20,6 +20,7 @@ mod models;
 mod routes;
 mod services;
 
+use connectors::velociraptor::VelociraptorConnector;
 use connectors::wazuh::WazuhConnector;
 use routes::AppState;
 
@@ -86,14 +87,20 @@ async fn main() {
         info!("Admin user successfully seeded/updated.");
     }
 
-    // Build the connector registry.  Phase 0: Wazuh only.
+    // Build the connector registry.
     let wazuh = WazuhConnector::new(
         cfg.opensearch_url.clone(),
         cfg.opensearch_user.clone(),
         cfg.opensearch_pass.clone(),
     );
+
+    let velociraptor = VelociraptorConnector::new(&cfg).await.unwrap_or_else(|e| {
+        eprintln!("Failed to initialize Velociraptor connector: {e}");
+        std::process::exit(1);
+    });
+
     let state = AppState {
-        connectors: vec![Arc::new(wazuh)],
+        connectors: vec![Arc::new(wazuh), Arc::new(velociraptor)],
         db,
         config: Arc::new(cfg.clone()),
     };

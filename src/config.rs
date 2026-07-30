@@ -12,7 +12,7 @@ use anyhow::{anyhow, Result};
 // Fields consumed progressively across tickets — suppress premature dead_code
 // lint until each field is wired to a connector or route.
 #[allow(dead_code)]
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Config {
     /// TCP port the API server will listen on (e.g. `3000`).
     pub port: u16,
@@ -40,6 +40,28 @@ pub struct Config {
     /// Password to seed the first admin user on startup.
     /// An admin user is created/updated with this password on startup.
     pub admin_seed_password: String,
+
+    /// Path to the Velociraptor api_client.yaml configuration file.
+    pub velociraptor_api_client_yaml: String,
+}
+
+impl std::fmt::Debug for Config {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Config")
+            .field("port", &self.port)
+            .field("database_url", &self.database_url)
+            .field("opensearch_url", &self.opensearch_url)
+            .field("opensearch_user", &self.opensearch_user)
+            .field("opensearch_pass", &"[REDACTED]")
+            .field("jwt_secret", &"[REDACTED]")
+            .field("admin_seed_email", &self.admin_seed_email)
+            .field("admin_seed_password", &"[REDACTED]")
+            .field(
+                "velociraptor_api_client_yaml",
+                &self.velociraptor_api_client_yaml,
+            )
+            .finish()
+    }
 }
 
 impl Config {
@@ -68,6 +90,7 @@ impl Config {
             jwt_secret: require_var("JWT_SECRET")?,
             admin_seed_email: require_var("ADMIN_SEED_EMAIL")?,
             admin_seed_password: require_var("ADMIN_SEED_PASSWORD")?,
+            velociraptor_api_client_yaml: require_var("VELOCIRAPTOR_CONFIG_PATH")?,
         })
     }
 }
