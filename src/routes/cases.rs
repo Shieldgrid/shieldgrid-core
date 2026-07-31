@@ -298,16 +298,16 @@ pub async fn execute_action_handler(
     let result = connector.push_action(action_cmd).await;
 
     let (audit_action, detail) = match &result {
-        Ok(res) => {
-            if res.success {
-                ("action_success", res.detail.clone())
-            } else if res.is_timeout {
-                ("action_timeout", res.detail.clone())
-            } else {
-                ("action_failure", res.detail.clone())
-            }
+        Ok(res) => match res.status {
+            crate::models::action::ActionStatus::Success => ("action_success", res.detail.clone()),
+            crate::models::action::ActionStatus::Failure => ("action_failure", res.detail.clone()),
+            crate::models::action::ActionStatus::Timeout => ("action_timeout", res.detail.clone()),
+        },
+        Err(e) => {
+            // This should only happen for fatal connector errors now.
+            // We map this to Timeout because if it's an unhandled error, we don't know the state.
+            ("action_timeout", e.to_string())
         }
-        Err(e) => ("action_error", e.to_string()),
     };
 
     let final_target_str = format!("{}:detail:{}", target_str, detail);

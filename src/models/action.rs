@@ -15,15 +15,21 @@ pub struct ResponseAction {
     pub case_id: Option<Uuid>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ActionStatus {
+    Success,
+    Failure,
+    Timeout,
+}
+
 /// The outcome of an attempted ResponseAction.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActionResult {
-    /// True if the action completed successfully, false otherwise.
-    pub success: bool,
+    /// The normalized outcome state.
+    pub status: ActionStatus,
     /// Detailed message explaining the success or failure cause.
     pub detail: String,
-    /// Whether the action reached a timeout/ambiguous state (if true, success is false).
-    pub is_timeout: bool,
     /// The time the result was finalized.
     pub timestamp: DateTime<Utc>,
 }

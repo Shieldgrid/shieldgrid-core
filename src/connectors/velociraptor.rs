@@ -7,7 +7,7 @@ use tonic::transport::{Certificate, Channel, ClientTlsConfig, Endpoint, Identity
 
 use crate::config::Config;
 use crate::connectors::{Connector, HealthStatus};
-use crate::models::action::{ActionResult, ResponseAction};
+use crate::models::action::{ActionResult, ActionStatus, ResponseAction};
 use crate::models::alert::{AlertStatus, NormalizedAlert, Severity};
 
 pub mod api {
@@ -176,9 +176,8 @@ impl Connector for VelociraptorConnector {
             "unisolate" => ("Linux.Remediation.Quarantine", "Y"),
             _ => {
                 return Ok(ActionResult {
-                    success: false,
+                    status: ActionStatus::Failure,
                     detail: format!("Unsupported action type: {}", action.action_type),
-                    is_timeout: false,
                     timestamp: Utc::now(),
                 })
             }
@@ -189,16 +188,21 @@ impl Connector for VelociraptorConnector {
             "SELECT os_info.hostname, last_seen_at FROM clients(client_id='{}')",
             action.target_id
         );
-        let check_rows = self
-            .run_query(&check_vql)
-            .await
-            .context("Failed to query client status")?;
+        let check_rows = match self.run_query(&check_vql).await {
+            Ok(rows) => rows,
+            Err(e) => {
+                return Ok(ActionResult {
+                    status: ActionStatus::Failure,
+                    detail: format!("Pre-flight check failed due to connection error: {e}"),
+                    timestamp: Utc::now(),
+                });
+            }
+        };
 
         if check_rows.is_empty() {
             return Ok(ActionResult {
-                success: false,
+                status: ActionStatus::Failure,
                 detail: format!("Target {} not found in Velociraptor", action.target_id),
-                is_timeout: false,
                 timestamp: Utc::now(),
             });
         }
@@ -213,12 +217,11 @@ impl Connector for VelociraptorConnector {
 
         if now_usec - last_seen_at_usec > ten_minutes_usec {
             return Ok(ActionResult {
-                success: false,
+                status: ActionStatus::Failure,
                 detail: format!(
                     "Target {} is offline (last seen more than 10 mins ago)",
                     action.target_id
                 ),
-                is_timeout: false,
                 timestamp: Utc::now(),
             });
         }
@@ -228,10 +231,18 @@ impl Connector for VelociraptorConnector {
             "SELECT collect_client(client_id='{}', artifacts='{}', env=dict(RemovePolicy='{}')) AS flow_id FROM scope()",
             action.target_id, artifact, remove_policy
         );
-        let trigger_rows = self
-            .run_query(&trigger_vql)
-            .await
-            .context("Failed to trigger collection")?;
+        let trigger_rows = match self.run_query(&trigger_vql).await {
+            Ok(rows) => rows,
+            Err(e) => {
+                // If the dispatch query fails, we lost connection BEFORE or DURING dispatch.
+                // It is ambiguous if Velociraptor received it.
+                return Ok(ActionResult {
+                    status: ActionStatus::Timeout,
+                    detail: format!("Connection dropped during dispatch: {e}. Outcome unknown."),
+                    timestamp: Utc::now(),
+                });
+            }
+        };
 
         let flow_id = trigger_rows
             .first()
@@ -241,10 +252,14 @@ impl Connector for VelociraptorConnector {
         let flow_id = match flow_id {
             Some(id) => id,
             None => {
+                // The query succeeded, but returned no flow_id.
+                // The action was definitively not scheduled.
                 return Ok(ActionResult {
-                    success: false,
-                    detail: format!("Failed to schedule artifact on {}", action.target_id),
-                    is_timeout: false,
+                    status: ActionStatus::Failure,
+                    detail: format!(
+                        "Failed to schedule artifact on {} (no flow_id returned)",
+                        action.target_id
+                    ),
                     timestamp: Utc::now(),
                 });
             }
@@ -258,7 +273,15 @@ impl Connector for VelociraptorConnector {
                 "SELECT state FROM flows(client_id='{}', flow_id='{}')",
                 action.target_id, flow_id
             );
-            let poll_rows = self.run_query(&poll_vql).await.unwrap_or_default();
+
+            let poll_rows = match self.run_query(&poll_vql).await {
+                Ok(rows) => rows,
+                Err(_) => {
+                    // We ignore intermediate poll errors (just continue the loop).
+                    // If it drops entirely, we will just time out.
+                    continue;
+                }
+            };
 
             if let Some(row) = poll_rows.first() {
                 let state = row
@@ -267,27 +290,24 @@ impl Connector for VelociraptorConnector {
                     .unwrap_or("UNKNOWN");
                 if state == "FINISHED" {
                     return Ok(ActionResult {
-                        success: true,
+                        status: ActionStatus::Success,
                         detail: format!("Action {} completed successfully", action.action_type),
-                        is_timeout: false,
                         timestamp: Utc::now(),
                     });
                 } else if state == "ERROR" {
                     return Ok(ActionResult {
-                        success: false,
+                        status: ActionStatus::Failure,
                         detail: format!("Action {} failed during execution", action.action_type),
-                        is_timeout: false,
                         timestamp: Utc::now(),
                     });
                 }
             }
         }
 
-        // Timeout
+        // Timeout (either connection dropped repeatedly mid-poll, or just took too long)
         Ok(ActionResult {
-            success: false,
+            status: ActionStatus::Timeout,
             detail: format!("Action {} timed out. Outcome unknown.", action.action_type),
-            is_timeout: true,
             timestamp: Utc::now(),
         })
     }
