@@ -6,7 +6,7 @@ use axum::{
 };
 use uuid::Uuid;
 
-use crate::middleware::RequireAdmin;
+use crate::middleware::{RequireAdmin, RequireRead};
 use crate::models::case::{Case, CreateCaseRequest, UpdateCaseRequest};
 use crate::routes::AppState;
 
@@ -59,7 +59,7 @@ pub async fn create_case_handler(
 
 /// GET /api/v1/cases
 pub async fn list_cases_handler(
-    _auth: RequireAdmin,
+    _auth: RequireRead,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
     let result = sqlx::query_as!(
@@ -83,7 +83,7 @@ pub async fn list_cases_handler(
 
 /// GET /api/v1/cases/:id
 pub async fn get_case_handler(
-    _auth: RequireAdmin,
+    _auth: RequireRead,
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> impl IntoResponse {
@@ -235,7 +235,7 @@ pub async fn detach_alert_handler(
 
 /// GET /api/v1/cases/:id/alerts
 pub async fn list_case_alerts_handler(
-    _auth: RequireAdmin,
+    _auth: RequireRead,
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> impl IntoResponse {
@@ -331,7 +331,7 @@ pub async fn execute_action_handler(
 
 /// GET /api/v1/cases/:id/actions
 pub async fn list_case_actions_handler(
-    _auth: RequireAdmin,
+    _auth: RequireRead,
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> impl IntoResponse {

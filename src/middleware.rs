@@ -28,7 +28,7 @@ impl FromRequestParts<AppState> for Claims {
                     if state.config.api_tokens.iter().any(|t| t == token) {
                         return Ok(Claims {
                             sub: "mcp-service-account".to_string(),
-                            role: "admin".to_string(),
+                            role: "mcp-read".to_string(),
                             exp: 0,
                         });
                     }
@@ -85,6 +85,33 @@ impl FromRequestParts<AppState> for RequireAdmin {
         } else {
             warn!(
                 "User {} lacks admin role (role is '{}')",
+                claims.sub, claims.role
+            );
+            Err(StatusCode::FORBIDDEN.into_response())
+        }
+    }
+}
+
+/// Extractor to enforce the `admin` or `mcp-read` role.
+///
+/// Returns `403 Forbidden` if the user is authenticated but has neither role.
+#[allow(dead_code)]
+pub struct RequireRead(pub Claims);
+
+impl FromRequestParts<AppState> for RequireRead {
+    type Rejection = Response;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        let claims = Claims::from_request_parts(parts, state).await?;
+
+        if claims.role == "admin" || claims.role == "mcp-read" {
+            Ok(RequireRead(claims))
+        } else {
+            warn!(
+                "User {} lacks read access (role is '{}')",
                 claims.sub, claims.role
             );
             Err(StatusCode::FORBIDDEN.into_response())
