@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
+use serde_json::Value;
 use std::time::Duration;
 use tonic::transport::{Certificate, Channel, ClientTlsConfig, Endpoint, Identity};
 
@@ -123,6 +124,117 @@ impl VelociraptorConnector {
         self.run_query("SELECT name, description FROM artifact_definitions()")
             .await
     }
+
+    /// Run a client artifact on a specific endpoint and return its results.
+    ///    /// This is the *correct* client-scoping path: the plain
+    /// `SELECT * FROM Artifact.X() FROM clients(client_id=...)` form silently
+    /// returns nothing through the raw gRPC `query` API, so we dispatch a real
+    /// collection (`collect_client`), then read the stored results via
+    /// `flow_results()`.
+    ///
+    /// `params` are passed as the artifact's env (e.g. `Command` for shell
+    /// artifacts). Note that shell artifacts (`Linux.Sys.BashShell` and
+    /// friends) open an interactive session: results are produced within
+    /// seconds while the flow itself stays `IN_PROGRESS` until the session
+    /// timeout, so we return as soon as `flow_results()` yields rows rather
+    /// than waiting for the flow to reach `FINISHED`.
+    ///
+    /// Polls for up to 60 s; returns an error if the flow ends in an error
+    /// state or produces no results in time.
+    pub async fn run_artifact_on_client(
+        &self,
+        artifact: &str,
+        params: &[(String, String)],
+        client_id: &str,
+    ) -> Result<Vec<serde_json::Value>> {
+        // 1. Dispatch the collection.
+        let env_parts: Vec<String> = params
+            .iter()
+            .map(|(k, v)| format!("{}={}", k, vql_quote(v)))
+            .collect();
+        let env_clause = if env_parts.is_empty() {
+            String::new()
+        } else {
+            format!(", env=dict({})", env_parts.join(", "))
+        };
+
+        let dispatch_vql = format!(
+            "SELECT collect_client(client_id='{}', artifacts='{}'{}) AS flow_id FROM scope()",
+            client_id, artifact, env_clause
+        );
+
+        let dispatch_rows = self.run_query(&dispatch_vql).await?;
+        let flow_id = extract_flow_id(dispatch_rows.first())?;
+
+        // 2. Poll for results (return as soon as any appear) and watch for
+        //    error states.
+        let mut final_state: Option<String> = None;
+        for _ in 0..30 {
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+
+            let poll_vql = format!(
+                "SELECT state FROM flows(client_id='{}', flow_id='{}')",
+                client_id, flow_id
+            );
+            if let Ok(rows) = self.run_query(&poll_vql).await {
+                if let Some(state) = rows
+                    .first()
+                    .and_then(|r| r.get("state"))
+                    .and_then(Value::as_str)
+                {
+                    final_state = Some(state.to_string());
+                    if state == "ERROR" {
+                        return Err(anyhow::anyhow!(
+                            "artifact {artifact} failed on client {client_id} (flow {flow_id})"
+                        ));
+                    }
+                }
+            }
+
+            let results_vql = format!(
+                "SELECT * FROM flow_results(client_id='{}', flow_id='{}')",
+                client_id, flow_id
+            );
+            if let Ok(rows) = self.run_query(&results_vql).await {
+                if !rows.is_empty() {
+                    return Ok(rows);
+                }
+                if final_state.as_deref() == Some("FINISHED") {
+                    return Ok(rows);
+                }
+            }
+        }
+
+        Err(anyhow::anyhow!(
+            "artifact {artifact} on client {client_id} produced no results within 60s (flow {flow_id}, last state {})",
+            final_state.unwrap_or_else(|| "unknown".into())
+        ))
+    }
+}
+
+/// Quote a value as a VQL string literal, escaping backslashes and quotes.
+fn vql_quote(value: &str) -> String {
+    let escaped = value.replace('\\', "\\\\").replace('\'', "\\'");
+    format!("'{}'", escaped)
+}
+
+/// Extract a flow id from the `collect_client` result row.
+///
+/// The row is `{"flow_id": {"flow_id": "F.xxx", "request": {...}}}` — the
+/// value is itself an object containing the id.
+fn extract_flow_id(row: Option<&serde_json::Value>) -> Result<String> {
+    let row = row.ok_or_else(|| anyhow::anyhow!("collect_client returned no flow id"))?;
+    let flow_id = row
+        .get("flow_id")
+        .and_then(|v| {
+            v.as_str().map(|s| s.to_string()).or_else(|| {
+                v.get("flow_id")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string())
+            })
+        })
+        .ok_or_else(|| anyhow::anyhow!("collect_client response missing flow_id: {}", row))?;
+    Ok(flow_id)
 }
 
 #[async_trait]
