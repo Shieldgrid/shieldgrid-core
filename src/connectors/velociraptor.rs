@@ -67,7 +67,12 @@ impl VelociraptorConnector {
         Ok(Self { channel })
     }
 
-    async fn run_query(&self, query: &str) -> Result<Vec<serde_json::Value>> {
+    /// Run an arbitrary VQL query against the Velociraptor server and stream
+    /// the result rows back as JSON values.
+    ///
+    /// Server-side only: the gRPC `query` API executes in the server context.
+    /// Queries are capped at 500 rows and 30 s execution time.
+    pub async fn run_query(&self, query: &str) -> Result<Vec<serde_json::Value>> {
         let mut client = ApiClient::new(self.channel.clone());
 
         let vql_query = VqlRequest {
@@ -100,6 +105,23 @@ impl VelociraptorConnector {
         }
 
         Ok(all_rows)
+    }
+
+    /// List the clients registered with the server (hostname, OS, version, last seen).
+    pub async fn list_clients(&self) -> Result<Vec<serde_json::Value>> {
+        self.run_query(
+            "SELECT client_id, os_info.hostname AS hostname, os_info.system AS os, os_info.architecture AS arch, client_version, last_seen_at FROM clients()",
+        )
+        .await
+    }
+
+    /// List the artifacts available on the server (name, description).
+    ///
+    /// Uses `artifact_definitions()` — the server-scope plugin in Velociraptor
+    /// 0.77 (the older `artifact_list()` plugin no longer exists).
+    pub async fn list_artifacts(&self) -> Result<Vec<serde_json::Value>> {
+        self.run_query("SELECT name, description FROM artifact_definitions()")
+            .await
     }
 }
 
@@ -310,6 +332,10 @@ impl Connector for VelociraptorConnector {
             detail: format!("Action {} timed out. Outcome unknown.", action.action_type),
             timestamp: Utc::now(),
         })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 

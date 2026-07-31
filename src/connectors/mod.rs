@@ -80,4 +80,10 @@ pub trait Connector: Send + Sync {
     ///
     /// Implementations that do not support actions should return a clear "not supported" error.
     async fn push_action(&self, action: ResponseAction) -> Result<ActionResult>;
+
+    /// Downcast support for connector-specific capabilities.
+    ///
+    /// Routes that need to reach a concrete connector type (e.g. run VQL against
+    /// the Velociraptor gRPC API) use `as_any().downcast_ref::<Concrete>()`.
+    fn as_any(&self) -> &dyn std::any::Any;
 }

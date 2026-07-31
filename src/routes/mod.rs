@@ -15,6 +15,7 @@ pub mod audit;
 pub mod auth;
 pub mod cases;
 pub mod health;
+pub mod velociraptor;
 
 // ── App state ─────────────────────────────────────────────────────────────────
 
@@ -93,6 +94,18 @@ pub fn build_router(state: AppState) -> Router {
             "/api/v1/cases/{id}/actions",
             axum::routing::get(cases::list_case_actions_handler)
                 .post(cases::execute_action_handler),
+        )
+        .route(
+            "/api/v1/velociraptor/clients",
+            axum::routing::get(velociraptor::list_clients_handler),
+        )
+        .route(
+            "/api/v1/velociraptor/artifacts",
+            axum::routing::get(velociraptor::list_artifacts_handler),
+        )
+        .route(
+            "/api/v1/velociraptor/query",
+            axum::routing::post(velociraptor::run_query_handler),
         )
         .layer(cors)
         .with_state(state)

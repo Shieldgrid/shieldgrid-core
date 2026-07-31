@@ -176,6 +176,10 @@ impl Connector for WazuhConnector {
             timestamp: Utc::now(),
         })
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 // ── Mapping helpers ───────────────────────────────────────────────────────────
