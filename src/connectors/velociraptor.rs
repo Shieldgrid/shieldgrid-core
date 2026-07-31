@@ -265,6 +265,16 @@ impl Connector for VelociraptorConnector {
 
             let id = Uuid::parse_str(id_str).unwrap_or_else(|_| Uuid::new_v4());
 
+            // `source_id` mirrors the parsed source UUID so re-fetching the same
+            // alert from Velociraptor upserts rather than duplicates. Rows without
+            // a usable id fall back to a fresh UUID (no stable key exists to dedupe
+            // against, matching the pre-persistence behaviour).
+            let source_id = if Uuid::parse_str(id_str).is_ok() {
+                id_str.to_string()
+            } else {
+                id.to_string()
+            };
+
             let severity_str = row
                 .get("severity")
                 .and_then(|v| v.as_str())
@@ -292,6 +302,7 @@ impl Connector for VelociraptorConnector {
 
             alerts.push(NormalizedAlert {
                 id,
+                source_id,
                 connector_id: self.id().to_string(),
                 severity,
                 source,
@@ -475,6 +486,14 @@ mod tests {
         let id_str = row.get("id").and_then(|v| v.as_str()).unwrap_or("");
         let id = Uuid::parse_str(id_str).unwrap_or_else(|_| Uuid::new_v4());
         assert_eq!(id.to_string(), "123e4567-e89b-12d3-a456-426614174000");
+
+        // source_id must mirror a parseable source id so re-fetches dedupe.
+        let source_id = if Uuid::parse_str(id_str).is_ok() {
+            id_str.to_string()
+        } else {
+            id.to_string()
+        };
+        assert_eq!(source_id, "123e4567-e89b-12d3-a456-426614174000");
 
         let severity_str = row
             .get("severity")

@@ -1,0 +1,69 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, connector_id, source_id, severity, source, timestamp, raw_payload, status\n         FROM alerts\n         WHERE ($1::timestamptz IS NULL OR timestamp > $1)\n           AND ($2::text IS NULL OR connector_id = $2)\n           AND ($3::text IS NULL OR severity = $3)\n           AND ($4::text IS NULL OR status = $4)\n         ORDER BY timestamp DESC\n         LIMIT $5 OFFSET $6",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "connector_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "source_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "severity",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "source",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "timestamp",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "raw_payload",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 7,
+        "name": "status",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Text",
+        "Text",
+        "Text",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "866dc6e7fc14b90b98d1c608b6c7472276d531de6e8600d66abbbc74550c5df3"
+}

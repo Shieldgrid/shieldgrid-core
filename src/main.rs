@@ -99,8 +99,22 @@ async fn main() {
         std::process::exit(1);
     });
 
+    let connectors: Vec<Arc<dyn crate::connectors::Connector>> =
+        vec![Arc::new(wazuh), Arc::new(velociraptor)];
+
+    // Seed one ingest job per connector and start the background ingest loop.
+    // Existing job rows (schedule, watermark) survive restarts.
+    match services::ingest::seed_jobs(&db, &connectors).await {
+        Ok(count) => info!("Seeded {count} ingest job(s)."),
+        Err(e) => warn!("Failed to seed ingest jobs: {e}"),
+    }
+    tokio::spawn(services::ingest::run_ingest_loop(
+        db.clone(),
+        connectors.clone(),
+    ));
+
     let state = AppState {
-        connectors: vec![Arc::new(wazuh), Arc::new(velociraptor)],
+        connectors,
         db,
         config: Arc::new(cfg.clone()),
     };

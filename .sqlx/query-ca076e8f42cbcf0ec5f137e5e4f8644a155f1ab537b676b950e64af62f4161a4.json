@@ -1,0 +1,65 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE alerts\n         SET status = $2, updated_at = NOW()\n         WHERE id = $1\n         RETURNING id, connector_id, source_id, severity, source, timestamp, raw_payload, status",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "connector_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "source_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "severity",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "source",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "timestamp",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "raw_payload",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 7,
+        "name": "status",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "ca076e8f42cbcf0ec5f137e5e4f8644a155f1ab537b676b950e64af62f4161a4"
+}

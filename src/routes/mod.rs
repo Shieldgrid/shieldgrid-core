@@ -15,6 +15,7 @@ pub mod audit;
 pub mod auth;
 pub mod cases;
 pub mod health;
+pub mod jobs;
 pub mod velociraptor;
 
 // ── App state ─────────────────────────────────────────────────────────────────
@@ -62,10 +63,19 @@ pub fn build_router(state: AppState) -> Router {
         .route("/health", get(health::health_handler))
         .route("/api/v1/alerts", get(alerts::alerts_handler))
         .route(
+            "/api/v1/alerts/{id}",
+            axum::routing::patch(alerts::update_alert_handler),
+        )
+        .route("/api/v1/jobs", axum::routing::get(jobs::list_jobs_handler))
+        .route(
             "/api/v1/auth/login",
             axum::routing::post(auth::login_handler),
         )
         .route("/api/v1/auth/me", axum::routing::get(auth::me_handler))
+        .route(
+            "/api/v1/auth/refresh",
+            axum::routing::get(auth::refresh_handler),
+        )
         .route(
             "/api/v1/auth/logout",
             axum::routing::post(auth::logout_handler),

@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, connector_id, interval_minutes, last_watermark\n         FROM jobs\n         WHERE enabled = TRUE\n           AND (next_run_at IS NULL OR next_run_at <= NOW())",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "connector_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "interval_minutes",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "last_watermark",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "5186fc430eb1e7a8a18fb388219e4f4d25eb05ee6dc27aa87697fbdbffbe57c9"
+}

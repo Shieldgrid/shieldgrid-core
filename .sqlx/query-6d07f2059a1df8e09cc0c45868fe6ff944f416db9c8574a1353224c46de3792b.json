@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE jobs SET\n            last_run_at = NOW(),\n            last_status = 'success',\n            last_error = NULL,\n            last_watermark = COALESCE($2, last_watermark),\n            next_run_at = $3,\n            updated_at = NOW()\n         WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6d07f2059a1df8e09cc0c45868fe6ff944f416db9c8574a1353224c46de3792b"
+}
