@@ -78,13 +78,23 @@ impl ConnectorHealthEntry {
 pub async fn health_handler(State(state): State<AppState>) -> Json<HealthResponse> {
     let connectors: &[Arc<dyn Connector>] = &state.connectors;
 
-    // Poll all connectors concurrently.
-    let mut entries = Vec::with_capacity(connectors.len());
+    // Poll all connectors concurrently. Each check runs on its own task so a
+    // slow or hanging connector cannot delay the others' health results.
+    let mut set = tokio::task::JoinSet::new();
     for connector in connectors {
         let id = connector.id().to_string();
-        let status = connector.health_check().await;
+        let connector = connector.clone();
+        let check = async move { (id, connector.health_check().await) };
+        set.spawn(check);
+    }
+
+    let mut entries = Vec::with_capacity(connectors.len());
+    while let Some(Ok((id, status))) = set.join_next().await {
         entries.push(ConnectorHealthEntry::from_connector_status(id, status));
     }
+
+    // Stable output ordering regardless of which check finished first.
+    entries.sort_by(|a, b| a.id.cmp(&b.id));
 
     Json(HealthResponse {
         status: "ok",

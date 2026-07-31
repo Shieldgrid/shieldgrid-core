@@ -15,6 +15,7 @@
 //! | NormalizedAlert field | OpenSearch source |
 //! |---|---|
 //! | `id` | UUID generated at ingestion time |
+//! | `source_id` | `_id` of the hit document (stable dedupe key) |
 //! | `connector_id` | `"wazuh"` (static) |
 //! | `severity` | `_source.rule.level` → [`map_severity`] |
 //! | `source` | `_source.agent.name` (falls back to `_source.agent.id`) |
@@ -67,6 +68,7 @@ impl WazuhConnector {
 
         let client = Client::builder()
             .danger_accept_invalid_certs(insecure_tls)
+            .timeout(std::time::Duration::from_secs(30))
             .build()
             .expect("failed to build reqwest client");
 
@@ -194,6 +196,7 @@ impl Connector for WazuhConnector {
 /// This function is `pub(crate)` so the unit tests below can call it directly
 /// without spinning up an HTTP server.
 pub(crate) fn map_hit(hit: &Value) -> Option<NormalizedAlert> {
+    let source_id = hit.get("_id").and_then(Value::as_str)?;
     let source = hit.get("_source")?;
 
     let timestamp_str = source.pointer("/@timestamp").and_then(Value::as_str)?;
@@ -213,6 +216,7 @@ pub(crate) fn map_hit(hit: &Value) -> Option<NormalizedAlert> {
 
     Some(NormalizedAlert {
         id: Uuid::new_v4(),
+        source_id: source_id.to_string(),
         connector_id: "wazuh".into(),
         severity: map_severity(rule_level),
         source: source_name,
@@ -274,6 +278,7 @@ mod tests {
         let hit = mock_hit();
         let alert = map_hit(&hit).expect("should produce an alert from a valid hit");
 
+        assert_eq!(alert.source_id, "abc123");
         assert_eq!(alert.connector_id, "wazuh");
         assert_eq!(alert.source, "web-server-1");
         assert_eq!(alert.severity, Severity::High); // level 12 → High
@@ -286,6 +291,15 @@ mod tests {
         let mut hit = mock_hit();
         // Remove @timestamp — hit should be skipped.
         hit["_source"].as_object_mut().unwrap().remove("@timestamp");
+        assert!(map_hit(&hit).is_none());
+    }
+
+    #[test]
+    fn map_hit_missing_id_returns_none() {
+        let mut hit = mock_hit();
+        // Remove _id — without a stable source key the hit cannot be deduped,
+        // so it is skipped rather than producing an un-keyed alert.
+        hit.as_object_mut().unwrap().remove("_id");
         assert!(map_hit(&hit).is_none());
     }
 
