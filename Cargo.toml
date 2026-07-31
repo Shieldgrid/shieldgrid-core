@@ -27,6 +27,8 @@ tonic-prost = "0.14.6"
 tracing     = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 uuid        = { version = "1", features = ["v4", "serde"] }
+axum-extra = { version = "0.12.6", features = ["cookie"] }
+time = { version = "0.3.54", features = ["macros"] }
 
 [build-dependencies]
 tonic-prost-build = "0.14.6"

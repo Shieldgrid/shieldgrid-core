@@ -9,6 +9,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 
+use crate::models::action::{ActionResult, ResponseAction};
 use crate::models::alert::NormalizedAlert;
 
 pub mod velociraptor;
@@ -74,4 +75,15 @@ pub trait Connector: Send + Sync {
     /// Implementations should cap the result set at a reasonable maximum
     /// (e.g. 500) and document any such limit.
     async fn fetch_alerts(&self, since: DateTime<Utc>) -> Result<Vec<NormalizedAlert>>;
+
+    /// Push an action (like isolation or unisolation) to an endpoint via this connector.
+    ///
+    /// Implementations that do not support actions should return a clear "not supported" error.
+    async fn push_action(&self, action: ResponseAction) -> Result<ActionResult>;
+
+    /// Downcast support for connector-specific capabilities.
+    ///
+    /// Routes that need to reach a concrete connector type (e.g. run VQL against
+    /// the Velociraptor gRPC API) use `as_any().downcast_ref::<Concrete>()`.
+    fn as_any(&self) -> &dyn std::any::Any;
 }

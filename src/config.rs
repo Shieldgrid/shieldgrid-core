@@ -43,6 +43,13 @@ pub struct Config {
 
     /// Path to the Velociraptor api_client.yaml configuration file.
     pub velociraptor_api_client_yaml: String,
+
+    /// Comma-separated list of allowed CORS origins
+    /// (e.g. `http://localhost:5173`).
+    pub allowed_origin: String,
+
+    /// Comma-separated list of static API tokens for service accounts / MCP integration.
+    pub api_tokens: Vec<String>,
 }
 
 impl std::fmt::Debug for Config {
@@ -60,6 +67,8 @@ impl std::fmt::Debug for Config {
                 "velociraptor_api_client_yaml",
                 &self.velociraptor_api_client_yaml,
             )
+            .field("allowed_origin", &self.allowed_origin)
+            .field("api_tokens", &"[REDACTED]")
             .finish()
     }
 }
@@ -91,6 +100,14 @@ impl Config {
             admin_seed_email: require_var("ADMIN_SEED_EMAIL")?,
             admin_seed_password: require_var("ADMIN_SEED_PASSWORD")?,
             velociraptor_api_client_yaml: require_var("VELOCIRAPTOR_CONFIG_PATH")?,
+            allowed_origin: std::env::var("ALLOWED_ORIGIN")
+                .unwrap_or_else(|_| "http://localhost:5173".to_string()),
+            api_tokens: std::env::var("API_TOKENS")
+                .unwrap_or_default()
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect(),
         })
     }
 }

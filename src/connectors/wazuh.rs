@@ -30,6 +30,7 @@ use serde_json::{json, Value};
 use uuid::Uuid;
 
 use crate::connectors::{Connector, HealthStatus};
+use crate::models::action::{ActionResult, ActionStatus, ResponseAction};
 use crate::models::alert::{AlertStatus, NormalizedAlert, Severity};
 
 // ── WazuhConnector ────────────────────────────────────────────────────────────
@@ -166,6 +167,18 @@ impl Connector for WazuhConnector {
 
         let alerts = hits.iter().filter_map(map_hit).collect();
         Ok(alerts)
+    }
+
+    async fn push_action(&self, _action: ResponseAction) -> Result<ActionResult> {
+        Ok(ActionResult {
+            status: ActionStatus::Failure,
+            detail: "Actions are not supported by the Wazuh connector.".to_string(),
+            timestamp: Utc::now(),
+        })
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 

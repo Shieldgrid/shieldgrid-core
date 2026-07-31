@@ -7,13 +7,17 @@ use chrono::{Duration, Utc};
 use jsonwebtoken::{encode, EncodingKey, Header};
 use uuid::Uuid;
 
+use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
+use time::Duration as CookieDuration;
+
 use crate::models::auth::{Claims, LoginRequest, LoginResponse};
 use crate::routes::AppState;
 
 /// Log in to the platform with an email and password.
-/// Returns a JSON Web Token on success.
+/// Sets an HttpOnly cookie containing the JWT on success.
 pub async fn login_handler(
     State(state): State<AppState>,
+    jar: CookieJar,
     Json(payload): Json<LoginRequest>,
 ) -> impl IntoResponse {
     // 1. Find user by email
@@ -80,5 +84,46 @@ pub async fn login_handler(
     .execute(&state.db)
     .await;
 
-    (StatusCode::OK, Json(LoginResponse { token })).into_response()
+    // 5. Set HttpOnly Cookie
+    let cookie = Cookie::build(("jwt_token", token))
+        .path("/")
+        .http_only(true)
+        .same_site(SameSite::Lax)
+        // .secure(true) // Typically true in production for HTTPS
+        .build();
+
+    (
+        StatusCode::OK,
+        jar.add(cookie),
+        Json(LoginResponse {
+            message: "Login successful".to_string(),
+        }),
+    )
+        .into_response()
+}
+
+/// Retrieve the currently authenticated user's claims.
+pub async fn me_handler(claims: Claims) -> Json<Claims> {
+    Json(claims)
+}
+
+/// Log out by expiring the JWT cookie.
+pub async fn logout_handler(jar: CookieJar) -> impl IntoResponse {
+    // Explicitly mirror the original cookie attributes so the browser
+    // can match and overwrite it correctly, then expire it.
+    let removal = Cookie::build(("jwt_token", ""))
+        .path("/")
+        .http_only(true)
+        .same_site(SameSite::Lax)
+        .max_age(CookieDuration::seconds(-1))
+        .build();
+
+    (
+        StatusCode::OK,
+        jar.add(removal),
+        Json(LoginResponse {
+            message: "Logged out".to_string(),
+        }),
+    )
+        .into_response()
 }

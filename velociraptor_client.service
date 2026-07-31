@@ -1,0 +1,12 @@
+[Unit]
+Description=Velociraptor Client
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/velociraptor --config /etc/velociraptor/client.config.yaml client -v
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

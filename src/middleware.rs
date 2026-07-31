@@ -21,15 +21,28 @@ impl FromRequestParts<AppState> for Claims {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        let auth_header = parts
-            .headers
-            .get(axum::http::header::AUTHORIZATION)
-            .and_then(|value| value.to_str().ok());
+        // 1. Check for a static API token in the Authorization header.
+        if let Some(auth_header) = parts.headers.get(axum::http::header::AUTHORIZATION) {
+            if let Ok(auth_str) = auth_header.to_str() {
+                if let Some(token) = auth_str.strip_prefix("Bearer ") {
+                    if state.config.api_tokens.iter().any(|t| t == token) {
+                        return Ok(Claims {
+                            sub: "mcp-service-account".to_string(),
+                            role: "mcp-read".to_string(),
+                            exp: 0,
+                        });
+                    }
+                }
+            }
+        }
 
-        let token = match auth_header {
-            Some(header) if header.starts_with("Bearer ") => &header["Bearer ".len()..],
-            _ => {
-                warn!("Missing or invalid Authorization header");
+        // 2. Fall back to the session cookie.
+        let jar = axum_extra::extract::cookie::CookieJar::from_headers(&parts.headers);
+
+        let token = match jar.get("jwt_token").map(|c| c.value()) {
+            Some(token) => token,
+            None => {
+                warn!("Missing jwt_token cookie");
                 return Err(StatusCode::UNAUTHORIZED.into_response());
             }
         };
@@ -72,6 +85,33 @@ impl FromRequestParts<AppState> for RequireAdmin {
         } else {
             warn!(
                 "User {} lacks admin role (role is '{}')",
+                claims.sub, claims.role
+            );
+            Err(StatusCode::FORBIDDEN.into_response())
+        }
+    }
+}
+
+/// Extractor to enforce the `admin` or `mcp-read` role.
+///
+/// Returns `403 Forbidden` if the user is authenticated but has neither role.
+#[allow(dead_code)]
+pub struct RequireRead(pub Claims);
+
+impl FromRequestParts<AppState> for RequireRead {
+    type Rejection = Response;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        let claims = Claims::from_request_parts(parts, state).await?;
+
+        if claims.role == "admin" || claims.role == "mcp-read" {
+            Ok(RequireRead(claims))
+        } else {
+            warn!(
+                "User {} lacks read access (role is '{}')",
                 claims.sub, claims.role
             );
             Err(StatusCode::FORBIDDEN.into_response())

@@ -10,3 +10,4 @@ velociraptor-docker/api_client.yaml
 opensearch_pass.txt
 sec.sh
 velociraptor-docker/custom_entrypoint.sh
+velociraptor-docker/client.config.yaml
