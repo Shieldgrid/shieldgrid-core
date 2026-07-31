@@ -21,6 +21,22 @@ impl FromRequestParts<AppState> for Claims {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
+        // 1. Check for a static API token in the Authorization header.
+        if let Some(auth_header) = parts.headers.get(axum::http::header::AUTHORIZATION) {
+            if let Ok(auth_str) = auth_header.to_str() {
+                if let Some(token) = auth_str.strip_prefix("Bearer ") {
+                    if state.config.api_tokens.iter().any(|t| t == token) {
+                        return Ok(Claims {
+                            sub: "mcp-service-account".to_string(),
+                            role: "admin".to_string(),
+                            exp: 0,
+                        });
+                    }
+                }
+            }
+        }
+
+        // 2. Fall back to the session cookie.
         let jar = axum_extra::extract::cookie::CookieJar::from_headers(&parts.headers);
 
         let token = match jar.get("jwt_token").map(|c| c.value()) {
