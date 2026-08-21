@@ -20,6 +20,7 @@ mod models;
 mod routes;
 mod services;
 
+use connectors::graylog::{GraylogConfig, GraylogConnector};
 use connectors::shuffle::{ShuffleConfig, ShuffleConnector};
 use connectors::velociraptor::VelociraptorConnector;
 use connectors::wazuh::WazuhConnector;
@@ -119,6 +120,22 @@ async fn main() {
             }
             Err(e) => {
                 warn!("Failed to initialize Shuffle connector: {e}");
+            }
+        }
+    }
+
+    // Initialize Graylog connector if configured
+    if let (Some(graylog_url), Some(graylog_key)) = (&cfg.graylog_api_url, &cfg.graylog_api_key) {
+        match GraylogConnector::new(GraylogConfig {
+            api_url: graylog_url.clone(),
+            api_key: graylog_key.clone(),
+        }) {
+            Ok(graylog) => {
+                info!("Graylog connector initialized");
+                connectors.push(Arc::new(graylog));
+            }
+            Err(e) => {
+                warn!("Failed to initialize Graylog connector: {e}");
             }
         }
     }

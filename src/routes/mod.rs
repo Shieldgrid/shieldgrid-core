@@ -18,7 +18,11 @@ pub mod auth;
 pub mod cases;
 pub mod detection;
 pub mod health;
+pub mod incidents;
 pub mod jobs;
+pub mod monitoring;
+pub mod network_connectors;
+pub mod notifications;
 pub mod scheduler;
 pub mod shuffle;
 pub mod threat_intel;
@@ -211,6 +215,120 @@ pub fn build_router(state: AppState) -> Router {
         .route(
             "/api/v1/scheduler/schedules/{id}/executions",
             axum::routing::get(scheduler::get_execution_history_handler),
+        )
+        .route(
+            "/api/v1/network-connectors",
+            axum::routing::get(network_connectors::list_network_connectors_handler)
+                .post(network_connectors::create_network_connector_handler),
+        )
+        .route(
+            "/api/v1/network-connectors/stats",
+            axum::routing::get(network_connectors::network_connector_stats_handler),
+        )
+        .route(
+            "/api/v1/network-connectors/{id}",
+            axum::routing::get(network_connectors::get_network_connector_handler)
+                .patch(network_connectors::update_network_connector_handler)
+                .delete(network_connectors::delete_network_connector_handler),
+        )
+        .route(
+            "/api/v1/network-connectors/{id}/messages",
+            axum::routing::get(network_connectors::list_syslog_messages_handler),
+        )
+        // Enhanced Incidents: Tasks
+        .route(
+            "/api/v1/cases/{id}/tasks",
+            axum::routing::get(incidents::list_tasks_handler).post(incidents::create_task_handler),
+        )
+        .route(
+            "/api/v1/tasks/{id}",
+            axum::routing::patch(incidents::update_task_handler)
+                .delete(incidents::delete_task_handler),
+        )
+        // Enhanced Incidents: Observables
+        .route(
+            "/api/v1/cases/{id}/observables",
+            axum::routing::get(incidents::list_observables_handler)
+                .post(incidents::create_observable_handler),
+        )
+        .route(
+            "/api/v1/observables/{id}",
+            axum::routing::patch(incidents::update_observable_handler)
+                .delete(incidents::delete_observable_handler),
+        )
+        // Enhanced Incidents: Templates
+        .route(
+            "/api/v1/templates",
+            axum::routing::get(incidents::list_templates_handler),
+        )
+        .route(
+            "/api/v1/templates/{id}",
+            axum::routing::get(incidents::get_template_handler),
+        )
+        .route(
+            "/api/v1/cases/{id}/apply-template/{template_id}",
+            axum::routing::post(incidents::apply_template_handler),
+        )
+        .route(
+            "/api/v1/cases/{id}/progress",
+            axum::routing::get(incidents::case_progress_handler),
+        )
+        // Monitoring
+        .route(
+            "/api/v1/monitoring/health",
+            axum::routing::get(monitoring::system_health_handler),
+        )
+        .route(
+            "/api/v1/monitoring/metrics",
+            axum::routing::get(monitoring::metrics_handler),
+        )
+        .route(
+            "/api/v1/monitoring/ingestion",
+            axum::routing::get(monitoring::ingestion_rate_handler),
+        )
+        .route(
+            "/api/v1/monitoring/dashboard",
+            axum::routing::get(monitoring::dashboard_handler),
+        )
+        .route(
+            "/api/v1/monitoring/sources",
+            axum::routing::get(monitoring::top_sources_handler),
+        )
+        .route(
+            "/api/v1/monitoring/severity",
+            axum::routing::get(monitoring::severity_distribution_handler),
+        )
+        // Notifications
+        .route(
+            "/api/v1/notifications/channels",
+            axum::routing::get(notifications::list_channels_handler)
+                .post(notifications::create_channel_handler),
+        )
+        .route(
+            "/api/v1/notifications/channels/{id}",
+            axum::routing::patch(notifications::update_channel_handler)
+                .delete(notifications::delete_channel_handler),
+        )
+        .route(
+            "/api/v1/notifications/rules",
+            axum::routing::get(notifications::list_rules_handler)
+                .post(notifications::create_rule_handler),
+        )
+        .route(
+            "/api/v1/notifications/rules/{id}",
+            axum::routing::delete(notifications::delete_rule_handler),
+        )
+        .route(
+            "/api/v1/notifications/send",
+            axum::routing::post(notifications::send_notification_handler),
+        )
+        .route(
+            "/api/v1/notifications/logs",
+            axum::routing::get(notifications::list_logs_handler),
+        )
+        .route(
+            "/api/v1/notifications/stats",
+            axum::routing::get(notifications::notification_stats_handler),
         )
         .layer(cors)
         .with_state(state)

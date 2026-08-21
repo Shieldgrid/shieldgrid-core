@@ -12,7 +12,9 @@ use serde::Serialize;
 use crate::models::action::{ActionResult, ResponseAction};
 use crate::models::alert::NormalizedAlert;
 
+pub mod graylog;
 pub mod shuffle;
+pub mod syslog;
 pub mod velociraptor;
 pub mod wazuh;
 

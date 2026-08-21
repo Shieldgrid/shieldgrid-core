@@ -68,6 +68,21 @@ pub struct Config {
 
     /// Optional Shuffle API key for authentication.
     pub shuffle_api_key: Option<String>,
+
+    /// Optional Graylog API URL.
+    pub graylog_api_url: Option<String>,
+
+    /// Optional Graylog API key.
+    pub graylog_api_key: Option<String>,
+
+    /// Optional LLM provider (openai or anthropic).
+    pub llm_provider: Option<String>,
+
+    /// Optional LLM API key.
+    pub llm_api_key: Option<String>,
+
+    /// Optional LLM model name.
+    pub llm_model: Option<String>,
 }
 
 impl std::fmt::Debug for Config {
@@ -95,6 +110,17 @@ impl std::fmt::Debug for Config {
                 "shuffle_api_key",
                 &self.shuffle_api_key.as_ref().map(|_| "[REDACTED]"),
             )
+            .field("graylog_api_url", &self.graylog_api_url)
+            .field(
+                "graylog_api_key",
+                &self.graylog_api_key.as_ref().map(|_| "[REDACTED]"),
+            )
+            .field("llm_provider", &self.llm_provider)
+            .field(
+                "llm_api_key",
+                &self.llm_api_key.as_ref().map(|_| "[REDACTED]"),
+            )
+            .field("llm_model", &self.llm_model)
             .finish()
     }
 }
@@ -144,6 +170,21 @@ impl Config {
                 .ok()
                 .filter(|s| !s.trim().is_empty()),
             shuffle_api_key: std::env::var("SHUFFLE_API_KEY")
+                .ok()
+                .filter(|s| !s.trim().is_empty()),
+            graylog_api_url: std::env::var("GRAYLOG_API_URL")
+                .ok()
+                .filter(|s| !s.trim().is_empty()),
+            graylog_api_key: std::env::var("GRAYLOG_API_KEY")
+                .ok()
+                .filter(|s| !s.trim().is_empty()),
+            llm_provider: std::env::var("LLM_PROVIDER")
+                .ok()
+                .filter(|s| !s.trim().is_empty()),
+            llm_api_key: std::env::var("LLM_API_KEY")
+                .ok()
+                .filter(|s| !s.trim().is_empty()),
+            llm_model: std::env::var("LLM_MODEL")
                 .ok()
                 .filter(|s| !s.trim().is_empty()),
         })
