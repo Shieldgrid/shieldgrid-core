@@ -34,10 +34,55 @@ pub struct ActionResult {
     pub timestamp: DateTime<Utc>,
 }
 
-/// API payload for requesting an action.
+/// API payload for requesting an action on a connector.
 #[derive(Debug, Deserialize)]
 pub struct ActionRequest {
     pub connector_id: String,
     pub action_type: String,
     pub target_id: String,
+}
+
+/// Predefined active response action template.
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct ActionTemplate {
+    pub id: Uuid,
+    pub name: String,
+    pub display_name: String,
+    pub description: String,
+    pub category: String,
+    pub provider: String,
+    pub risk_level: String,
+    pub params_schema: serde_json::Value,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+/// Audit record of an action execution.
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct ActionExecution {
+    pub id: Uuid,
+    pub template_id: Option<Uuid>,
+    pub template_name: String,
+    pub target_id: String,
+    pub target_type: String,
+    pub initiated_by: String,
+    pub status: String,
+    pub params: serde_json::Value,
+    pub output: Option<String>,
+    pub error: Option<String>,
+    pub case_id: Option<Uuid>,
+    pub alert_id: Option<Uuid>,
+    pub started_at: DateTime<Utc>,
+    pub completed_at: Option<DateTime<Utc>>,
+}
+
+/// API payload to trigger a Shieldgrid action execution.
+#[derive(Debug, Deserialize)]
+pub struct ExecuteActionRequest {
+    pub template_name: String,
+    pub target_id: String,
+    pub target_type: Option<String>,
+    pub params: Option<serde_json::Value>,
+    pub case_id: Option<Uuid>,
+    pub alert_id: Option<Uuid>,
 }

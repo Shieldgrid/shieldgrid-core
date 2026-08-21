@@ -31,6 +31,15 @@ pub struct Config {
     /// Basic-auth password for OpenSearch.
     pub opensearch_pass: String,
 
+    /// Wazuh manager REST API base URL (e.g. `https://wazuh.example.com:55000`).
+    pub wazuh_manager_url: String,
+
+    /// Wazuh manager API username (basic auth for the token exchange).
+    pub wazuh_manager_user: String,
+
+    /// Wazuh manager API password (basic auth for the token exchange).
+    pub wazuh_manager_pass: String,
+
     /// Secret key used to sign and verify JWT tokens.
     pub jwt_secret: String,
 
@@ -50,6 +59,15 @@ pub struct Config {
 
     /// Comma-separated list of static API tokens for service accounts / MCP integration.
     pub api_tokens: Vec<String>,
+
+    /// Optional VirusTotal API key for threat intelligence lookups.
+    pub virustotal_api_key: Option<String>,
+
+    /// Optional Shuffle API URL for SOAR workflow automation.
+    pub shuffle_api_url: Option<String>,
+
+    /// Optional Shuffle API key for authentication.
+    pub shuffle_api_key: Option<String>,
 }
 
 impl std::fmt::Debug for Config {
@@ -60,6 +78,9 @@ impl std::fmt::Debug for Config {
             .field("opensearch_url", &self.opensearch_url)
             .field("opensearch_user", &self.opensearch_user)
             .field("opensearch_pass", &"[REDACTED]")
+            .field("wazuh_manager_url", &self.wazuh_manager_url)
+            .field("wazuh_manager_user", &self.wazuh_manager_user)
+            .field("wazuh_manager_pass", &"[REDACTED]")
             .field("jwt_secret", &"[REDACTED]")
             .field("admin_seed_email", &self.admin_seed_email)
             .field("admin_seed_password", &"[REDACTED]")
@@ -69,6 +90,11 @@ impl std::fmt::Debug for Config {
             )
             .field("allowed_origin", &self.allowed_origin)
             .field("api_tokens", &"[REDACTED]")
+            .field("shuffle_api_url", &self.shuffle_api_url)
+            .field(
+                "shuffle_api_key",
+                &self.shuffle_api_key.as_ref().map(|_| "[REDACTED]"),
+            )
             .finish()
     }
 }
@@ -96,6 +122,9 @@ impl Config {
             opensearch_url: require_var("OPENSEARCH_URL")?,
             opensearch_user: require_var("OPENSEARCH_USER")?,
             opensearch_pass: require_var("OPENSEARCH_PASS")?,
+            wazuh_manager_url: require_var("WAZUH_MANAGER_URL")?,
+            wazuh_manager_user: require_var("WAZUH_MANAGER_USERNAME")?,
+            wazuh_manager_pass: require_var("WAZUH_MANAGER_PASSWORD")?,
             jwt_secret: require_var("JWT_SECRET")?,
             admin_seed_email: require_var("ADMIN_SEED_EMAIL")?,
             admin_seed_password: require_var("ADMIN_SEED_PASSWORD")?,
@@ -108,6 +137,15 @@ impl Config {
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty())
                 .collect(),
+            virustotal_api_key: std::env::var("VIRUSTOTAL_API_KEY")
+                .ok()
+                .filter(|s| !s.trim().is_empty()),
+            shuffle_api_url: std::env::var("SHUFFLE_API_URL")
+                .ok()
+                .filter(|s| !s.trim().is_empty()),
+            shuffle_api_key: std::env::var("SHUFFLE_API_KEY")
+                .ok()
+                .filter(|s| !s.trim().is_empty()),
         })
     }
 }

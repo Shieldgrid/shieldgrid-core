@@ -51,6 +51,21 @@ services:
       timeout: 3s
       retries: 10
 
+  # ── Claude Adapter ───────────────────────────────────────────────────────────
+  claude-adapter:
+    image: ghcr.io/chojuninengu/claude-adapter:latest
+    container_name: claude-adapter
+    restart: unless-stopped
+    ports:
+      - "3080:3080"
+    environment:
+      - PORT=3080
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-dummy-key}
+      - CLAUDE_ADAPTER_NON_INTERACTIVE=true
+      - NON_INTERACTIVE=true
+      - CI=true
+
 # ── Volumes ───────────────────────────────────────────────────────────────────
 volumes:
   postgres_data:

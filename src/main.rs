@@ -20,6 +20,7 @@ mod models;
 mod routes;
 mod services;
 
+use connectors::shuffle::{ShuffleConfig, ShuffleConnector};
 use connectors::velociraptor::VelociraptorConnector;
 use connectors::wazuh::WazuhConnector;
 use routes::AppState;
@@ -92,6 +93,9 @@ async fn main() {
         cfg.opensearch_url.clone(),
         cfg.opensearch_user.clone(),
         cfg.opensearch_pass.clone(),
+        cfg.wazuh_manager_url.clone(),
+        cfg.wazuh_manager_user.clone(),
+        cfg.wazuh_manager_pass.clone(),
     );
 
     let velociraptor = VelociraptorConnector::new(&cfg).await.unwrap_or_else(|e| {
@@ -99,8 +103,25 @@ async fn main() {
         std::process::exit(1);
     });
 
-    let connectors: Vec<Arc<dyn crate::connectors::Connector>> =
+    // Build the connector registry.
+    let mut connectors: Vec<Arc<dyn crate::connectors::Connector>> =
         vec![Arc::new(wazuh), Arc::new(velociraptor)];
+
+    // Initialize Shuffle connector if configured
+    if let (Some(shuffle_url), Some(shuffle_key)) = (&cfg.shuffle_api_url, &cfg.shuffle_api_key) {
+        match ShuffleConnector::new(ShuffleConfig {
+            api_url: shuffle_url.clone(),
+            api_key: shuffle_key.clone(),
+        }) {
+            Ok(shuffle) => {
+                info!("Shuffle connector initialized");
+                connectors.push(Arc::new(shuffle));
+            }
+            Err(e) => {
+                warn!("Failed to initialize Shuffle connector: {e}");
+            }
+        }
+    }
 
     // Seed one ingest job per connector and start the background ingest loop.
     // Existing job rows (schedule, watermark) survive restarts.
