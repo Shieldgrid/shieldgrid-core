@@ -3,4 +3,7 @@ pub mod alert;
 pub mod audit;
 pub mod auth;
 pub mod case;
+pub mod detection;
 pub mod jobs;
+pub mod threat_intel;
+pub mod wazuh;

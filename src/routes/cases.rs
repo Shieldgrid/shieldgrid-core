@@ -36,7 +36,7 @@ pub async fn create_case_handler(
     .fetch_one(&state.db)
     .await;
 
-    let case = match result {
+    let case: Case = match result {
         Ok(c) => c,
         Err(e) => {
             tracing::error!("Failed to create case: {e}");
@@ -136,7 +136,7 @@ pub async fn update_case_handler(
     .fetch_optional(&state.db)
     .await;
 
-    let case = match result {
+    let case: Case = match result {
         Ok(Some(c)) => c,
         Ok(None) => return StatusCode::NOT_FOUND.into_response(),
         Err(e) => {
