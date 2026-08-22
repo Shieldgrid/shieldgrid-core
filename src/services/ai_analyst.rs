@@ -90,24 +90,105 @@ pub async fn generate_triage_report(
             _ => base_score = 25,
         }
 
+        // Extract MITRE data from Wazuh alert payload
+        if let Some(rule) = alert.raw_payload.pointer("/rule") {
+            // Map Wazuh rule level to risk score
+            if let Some(level) = rule.get("level").and_then(|v| v.as_u64()) {
+                let level_score: u8 = match level {
+                    14..=15 => 90,
+                    11..=13 => 75,
+                    7..=10 => 50,
+                    4..=6 => 35,
+                    _ => 20,
+                };
+                base_score = std::cmp::max(base_score, level_score);
+            }
+
+            // Extract MITRE techniques from rule.mitre
+            if let Some(mitre) = rule.get("mitre") {
+                if let Some(ids) = mitre.get("id").and_then(|v| v.as_array()) {
+                    for id in ids {
+                        if let Some(id_str) = id.as_str() {
+                            if !mitre_techniques.contains(&id_str.to_string()) {
+                                mitre_techniques.push(id_str.to_string());
+                            }
+                        }
+                    }
+                }
+                if let Some(tactics) = mitre.get("tactic").and_then(|v| v.as_array()) {
+                    for t in tactics {
+                        if let Some(t_str) = t.as_str() {
+                            let formatted = format!("{}", t_str);
+                            if !mitre_tactics.contains(&formatted) {
+                                mitre_tactics.push(formatted);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Extract rule groups for additional context
+            if let Some(groups) = rule.get("groups").and_then(|v| v.as_array()) {
+                for g in groups {
+                    if let Some(g_str) = g.as_str() {
+                        match g_str {
+                            "sudo" => {
+                                if !mitre_techniques.contains(&"T1548.003".to_string()) {
+                                    mitre_techniques.push("T1548.003".to_string());
+                                }
+                                if !mitre_tactics.contains(&"Privilege Escalation".to_string()) {
+                                    mitre_tactics.push("Privilege Escalation".to_string());
+                                }
+                            }
+                            "sshd" | "authentication_success" => {
+                                if !mitre_techniques.contains(&"T1078".to_string()) {
+                                    mitre_techniques.push("T1078".to_string());
+                                }
+                                if !mitre_tactics.contains(&"Initial Access".to_string()) {
+                                    mitre_tactics.push("Initial Access".to_string());
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        }
+
+        // Keyword-based escalation for high-severity indicators
         let raw_str = alert.raw_payload.to_string();
         if raw_str.contains("powershell")
             || raw_str.contains("mimikatz")
             || raw_str.contains("lsass")
         {
             base_score = std::cmp::max(base_score, 85);
-            mitre_tactics.push("TA0006 - Credential Access".to_string());
-            mitre_techniques.push("T1003 - OS Credential Dumping".to_string());
+            if !mitre_techniques.contains(&"T1003".to_string()) {
+                mitre_techniques.push("T1003 - OS Credential Dumping".to_string());
+            }
+            if !mitre_tactics.contains(&"Credential Access".to_string()) {
+                mitre_tactics.push("Credential Access".to_string());
+            }
+        }
 
+        // Generate recommended actions based on score and MITRE context
+        if base_score >= 75 {
             recommended_actions.push(RecommendedAction {
                 template_name: "isolate_host".to_string(),
                 display_name: "Isolate Endpoint Host".to_string(),
-                description:
-                    "Quarantine host at the network layer to stop credential exfiltration."
-                        .to_string(),
+                description: "Quarantine host at the network layer to stop potential threat spread.".to_string(),
                 risk_level: "high".to_string(),
                 target_id: alert.source.clone(),
                 target_type: "endpoint".to_string(),
+            });
+        }
+        if base_score >= 50 {
+            recommended_actions.push(RecommendedAction {
+                template_name: "wazuh_active_response".to_string(),
+                display_name: "Trigger Wazuh Active Response".to_string(),
+                description: "Execute active response script on the target agent to investigate further.".to_string(),
+                risk_level: "medium".to_string(),
+                target_id: alert.source.clone(),
+                target_type: "agent".to_string(),
             });
         }
     } else if let Some(ioc) = req.ioc {
