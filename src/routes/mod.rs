@@ -11,6 +11,7 @@ use tower_http::cors::CorsLayer;
 use crate::connectors::Connector;
 
 pub mod actions;
+pub mod agents;
 pub mod ai_analyst;
 pub mod alerts;
 pub mod audit;
@@ -131,6 +132,14 @@ pub fn build_router(state: AppState) -> Router {
         .route(
             "/api/v1/wazuh/agents",
             axum::routing::get(wazuh::list_agents_handler),
+        )
+        .route(
+            "/api/v1/agents",
+            axum::routing::get(agents::list_agents_handler),
+        )
+        .route(
+            "/api/v1/agents/sync",
+            axum::routing::post(agents::sync_agents_handler),
         )
         .route(
             "/api/v1/threat-intel/lookup",

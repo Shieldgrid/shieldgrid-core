@@ -10,12 +10,13 @@
 //! (`RequireRead`) — the same bar as the Velociraptor client inventory.
 
 use axum::{
-    extract::{Query, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::{IntoResponse, Response},
     Json,
 };
 use std::time::Instant;
+use uuid::Uuid;
 
 use crate::connectors::wazuh::WazuhConnector;
 use crate::middleware::RequireRead;
@@ -23,6 +24,8 @@ use crate::routes::AppState;
 
 /// Valid Wazuh agent connection statuses (from the manager API).
 pub const AGENT_STATUSES: [&str; 4] = ["active", "disconnected", "never_connected", "pending"];
+
+
 
 /// Query parameters for `GET /api/v1/wazuh/agents`.
 #[derive(Debug, serde::Deserialize)]
