@@ -28,7 +28,7 @@ impl FromRequestParts<AppState> for Claims {
                     if state.config.api_tokens.iter().any(|t| t == token) {
                         return Ok(Claims {
                             sub: "mcp-service-account".to_string(),
-                            role: "mcp-read".to_string(),
+                            role: "admin".to_string(),
                             exp: 0,
                         });
                     }

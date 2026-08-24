@@ -29,6 +29,9 @@ pub struct WazuhAgent {
     /// Operating system platform (e.g. `"ubuntu"`, `"amzn"`).
     #[serde(default)]
     pub os_platform: Option<String>,
+    /// Operating system uname (e.g. `"Linux |Mx9 |6.8.0-136-generic |#136-Ubuntu SMP PREEMPT_DYNAMIC... |x86_64"`).
+    #[serde(default)]
+    pub os_uname: Option<String>,
     /// Wazuh agent version (e.g. `"Wazuh v4.14.5"`).
     #[serde(default)]
     pub version: Option<String>,

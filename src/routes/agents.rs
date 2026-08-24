@@ -115,6 +115,18 @@ pub async fn sync_agents_handler(
 
     // First pass: upsert all Wazuh agents
     for wa in &wazuh_agents {
+        // Extract true hostname from os_uname (format: "OS |Hostname |Kernel...")
+        let true_hostname = wa.os_uname.as_deref()
+            .and_then(|u| {
+                let parts: Vec<&str> = u.split('|').collect();
+                if parts.len() >= 2 {
+                    Some(parts[1].trim().to_string())
+                } else {
+                    None
+                }
+            })
+            .unwrap_or_else(|| wa.name.clone());
+
         // Parse last_seen (e.g. "2023-01-01T00:00:00Z") to DateTime<Utc>
         let w_last_seen = wa.last_seen.as_deref()
             .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
@@ -134,7 +146,7 @@ pub async fn sync_agents_handler(
                 wazuh_version = EXCLUDED.wazuh_version,
                 updated_at = now()
             "#,
-            wa.name, // Hostname
+            true_hostname, // Use true OS hostname for matching
             wa.id,
             wa.status,
             w_last_seen,

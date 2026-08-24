@@ -145,7 +145,7 @@ impl WazuhConnector {
 
         let mut url = format!("{}/agents", self.manager_url);
         let mut params: Vec<String> = vec![
-            "select=id,name,ip,status,os.name,os.version,os.platform,version,lastKeepAlive,group"
+            "select=id,name,ip,status,os.name,os.version,os.platform,os.uname,version,lastKeepAlive,group"
                 .into(),
         ];
         if let Some(s) = status {
@@ -488,6 +488,10 @@ pub(crate) fn parse_agents_response(body: &str) -> Result<Vec<WazuhAgent>> {
                 .pointer("/os/platform")
                 .and_then(Value::as_str)
                 .map(str::to_string),
+            os_uname: agent
+                .pointer("/os/uname")
+                .and_then(Value::as_str)
+                .map(str::to_string),
             version: agent
                 .get("version")
                 .and_then(Value::as_str)
@@ -648,7 +652,7 @@ mod tests {
             "data": {
                 "affected_items": [
                     {
-                        "os": { "name": "Amazon Linux", "platform": "amzn", "version": "2023" },
+                        "os": { "name": "Amazon Linux", "platform": "amzn", "version": "2023", "uname": "Linux |manager-master-0 |6.8.0-136-generic" },
                         "ip": "127.0.0.1",
                         "id": "000",
                         "status": "active",
@@ -657,12 +661,12 @@ mod tests {
                         "version": "Wazuh v4.14.4"
                     },
                     {
-                        "os": { "name": "Ubuntu", "platform": "ubuntu", "version": "24.04.4 LTS" },
+                        "os": { "name": "Ubuntu", "platform": "ubuntu", "version": "24.04.4 LTS", "uname": "Linux |web-server-01 |6.8.0-136-generic" },
                         "ip": "10.0.0.4",
                         "id": "004",
                         "status": "active",
                         "lastKeepAlive": "2026-07-31T15:18:08+00:00",
-                        "name": "ju-nine-ngu-154d5",
+                        "name": "web-server-01-agent",
                         "version": "Wazuh v4.14.5",
                         "group": ["docker"]
                     }
@@ -685,13 +689,16 @@ mod tests {
         assert_eq!(manager.status.as_deref(), Some("active"));
         assert_eq!(manager.os_name.as_deref(), Some("Amazon Linux"));
         assert_eq!(manager.os_version.as_deref(), Some("2023"));
+        assert_eq!(manager.os_uname.as_deref(), Some("Linux |manager-master-0 |6.8.0-136-generic"));
         // Group is absent on the manager row → empty vec, not an error.
         assert!(manager.groups.is_empty());
 
         let agent = &agents[1];
         assert_eq!(agent.id, "004");
+        assert_eq!(agent.name, "web-server-01-agent");
         assert_eq!(agent.ip.as_deref(), Some("10.0.0.4"));
         assert_eq!(agent.os_platform.as_deref(), Some("ubuntu"));
+        assert_eq!(agent.os_uname.as_deref(), Some("Linux |web-server-01 |6.8.0-136-generic"));
         assert_eq!(agent.version.as_deref(), Some("Wazuh v4.14.5"));
         assert_eq!(agent.groups, vec!["docker".to_string()]);
         assert_eq!(
