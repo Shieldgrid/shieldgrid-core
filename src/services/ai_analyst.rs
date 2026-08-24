@@ -175,7 +175,9 @@ pub async fn generate_triage_report(
             recommended_actions.push(RecommendedAction {
                 template_name: "isolate_host".to_string(),
                 display_name: "Isolate Endpoint Host".to_string(),
-                description: "Quarantine host at the network layer to stop potential threat spread.".to_string(),
+                description:
+                    "Quarantine host at the network layer to stop potential threat spread."
+                        .to_string(),
                 risk_level: "high".to_string(),
                 target_id: alert.source.clone(),
                 target_type: "endpoint".to_string(),
@@ -185,7 +187,9 @@ pub async fn generate_triage_report(
             recommended_actions.push(RecommendedAction {
                 template_name: "wazuh_active_response".to_string(),
                 display_name: "Trigger Wazuh Active Response".to_string(),
-                description: "Execute active response script on the target agent to investigate further.".to_string(),
+                description:
+                    "Execute active response script on the target agent to investigate further."
+                        .to_string(),
                 risk_level: "medium".to_string(),
                 target_id: alert.source.clone(),
                 target_type: "agent".to_string(),
