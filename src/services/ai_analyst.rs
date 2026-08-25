@@ -199,12 +199,13 @@ pub async fn generate_triage_report(
         target_str = ioc.clone();
         let intel = threat_intel::enrich_ioc(&ioc, config, pool).await?;
         if let Some(score) = intel.score {
-            if score > 60.0 {
-                base_score = 80;
-            } else if score > 30.0 {
-                base_score = 50;
+            let percentage = score * 100.0;
+            if percentage > 60.0 {
+                base_score = 90;
+            } else if percentage > 15.0 {
+                base_score = 65;
             } else {
-                base_score = 15;
+                base_score = 25;
             }
         }
         iocs_analyzed.push(intel);

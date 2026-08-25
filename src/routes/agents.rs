@@ -96,7 +96,10 @@ pub async fn sync_agents_handler(
 
     let velo_connector = state.connectors.iter().find(|c| c.id() == "velociraptor");
     let velo_clients: Vec<serde_json::Value> = if let Some(velo) = velo_connector {
-        if let Some(velo) = velo.as_any().downcast_ref::<crate::connectors::velociraptor::VelociraptorConnector>() {
+        if let Some(velo) = velo
+            .as_any()
+            .downcast_ref::<crate::connectors::velociraptor::VelociraptorConnector>()
+        {
             match velo.list_clients().await {
                 Ok(rows) => rows,
                 Err(e) => {
@@ -116,7 +119,9 @@ pub async fn sync_agents_handler(
     // First pass: upsert all Wazuh agents
     for wa in &wazuh_agents {
         // Extract true hostname from os_uname (format: "OS |Hostname |Kernel...")
-        let true_hostname = wa.os_uname.as_deref()
+        let true_hostname = wa
+            .os_uname
+            .as_deref()
             .and_then(|u| {
                 let parts: Vec<&str> = u.split('|').collect();
                 if parts.len() >= 2 {
@@ -128,7 +133,9 @@ pub async fn sync_agents_handler(
             .unwrap_or_else(|| wa.name.clone());
 
         // Parse last_seen (e.g. "2023-01-01T00:00:00Z") to DateTime<Utc>
-        let w_last_seen = wa.last_seen.as_deref()
+        let w_last_seen = wa
+            .last_seen
+            .as_deref()
             .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
             .map(|dt| dt.with_timezone(&Utc));
 
@@ -171,8 +178,11 @@ pub async fn sync_agents_handler(
         }
         let client_id = vc.get("client_id").and_then(|v| v.as_str()).unwrap_or("");
         let os = vc.get("os").and_then(|v| v.as_str()).unwrap_or("");
-        let version = vc.get("client_version").and_then(|v| v.as_str()).unwrap_or("");
-        
+        let version = vc
+            .get("client_version")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+
         let last_seen_raw = vc.get("last_seen_at").and_then(|v| v.as_i64()).unwrap_or(0);
         let v_last_seen = if last_seen_raw > 0 {
             // Velociraptor timestamps are microseconds, convert to seconds, then nanoseconds

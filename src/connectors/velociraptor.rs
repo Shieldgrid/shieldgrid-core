@@ -147,6 +147,37 @@ impl VelociraptorConnector {
         params: &[(String, String)],
         client_id: &str,
     ) -> Result<Vec<serde_json::Value>> {
+        // 0. Pre-flight: verify the client is reachable (last seen < 10 min).
+        //    This avoids burning 60 s polling a dead client.
+        let check_vql = format!(
+            "SELECT last_seen_at FROM clients(client_id='{}')",
+            client_id
+        );
+        if let Ok(rows) = self.run_query(&check_vql).await {
+            if let Some(last_seen) = rows
+                .first()
+                .and_then(|r| r.get("last_seen_at"))
+                .and_then(Value::as_i64)
+            {
+                let now_usec = chrono::Utc::now().timestamp_micros();
+                let ten_min_usec = 10 * 60 * 1_000_000;
+                if now_usec - last_seen > ten_min_usec {
+                    let last_seen_dt = chrono::DateTime::from_timestamp(
+                        last_seen / 1_000_000,
+                        ((last_seen % 1_000_000) * 1000) as u32,
+                    );
+                    let ago = last_seen_dt
+                        .map(|dt| format!("{}", dt.format("%Y-%m-%d %H:%M:%S UTC")))
+                        .unwrap_or_else(|| "unknown".into());
+                    return Err(anyhow::anyhow!(
+                        "Client {client_id} is offline (last seen {ago}). \
+                         Only server-scope VQL queries work when a client is offline. \
+                         Install and start the Velociraptor client on the target host."
+                    ));
+                }
+            }
+        }
+
         // 1. Dispatch the collection.
         let env_parts: Vec<String> = params
             .iter()
@@ -168,10 +199,18 @@ impl VelociraptorConnector {
 
         // 2. Poll for results (return as soon as any appear) and watch for
         //    error states.
+        //
+        //    We check three sources each tick:
+        //    a) `flow_results()` — structured result rows (most artifacts)
+        //    b) `flow_logs()`    — log output (shell artifacts like BashShell
+        //       write Stdout/Stderr here instead of flow_results)
+        //    c) Flow state — FINISHED/ERROR to short-circuit
         let mut final_state: Option<String> = None;
+        let mut last_log_count: usize = 0;
         for _ in 0..30 {
             tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
+            // Check flow state
             let poll_vql = format!(
                 "SELECT state FROM flows(client_id='{}', flow_id='{}')",
                 client_id, flow_id
@@ -191,9 +230,11 @@ impl VelociraptorConnector {
                 }
             }
 
+            // a) Check structured results — the `artifact` param is REQUIRED
+            //    in Velociraptor 0.77 for flow_results() to return data.
             let results_vql = format!(
-                "SELECT * FROM flow_results(client_id='{}', flow_id='{}')",
-                client_id, flow_id
+                "SELECT * FROM flow_results(client_id='{}', flow_id='{}', artifact='{}')",
+                client_id, flow_id, artifact
             );
             if let Ok(rows) = self.run_query(&results_vql).await {
                 if !rows.is_empty() {
@@ -201,6 +242,63 @@ impl VelociraptorConnector {
                 }
                 if final_state.as_deref() == Some("FINISHED") {
                     return Ok(rows);
+                }
+            }
+
+            // b) Check flow logs (shell artifacts write Stdout/Stderr here)
+            let logs_vql = format!(
+                "SELECT * FROM flow_logs(client_id='{}', flow_id='{}')",
+                client_id, flow_id
+            );
+            if let Ok(log_rows) = self.run_query(&logs_vql).await {
+                if log_rows.len() > last_log_count {
+                    last_log_count = log_rows.len();
+                    // Convert log entries to result rows
+                    let result_rows: Vec<Value> = log_rows
+                        .iter()
+                        .filter_map(|row| {
+                            // Extract the message content from log entries
+                            let msg = row
+                                .get("message")
+                                .or_else(|| row.get("log_message"))
+                                .and_then(Value::as_str)
+                                .unwrap_or("");
+                            if msg.is_empty() {
+                                return None;
+                            }
+                            // Try to parse the message as JSON (shell output often is)
+                            if let Ok(parsed) = serde_json::from_str::<Value>(msg) {
+                                Some(parsed)
+                            } else {
+                                Some(serde_json::json!({"output": msg}))
+                            }
+                        })
+                        .collect();
+                    if !result_rows.is_empty() {
+                        return Ok(result_rows);
+                    }
+                }
+                // If flow finished and we have logs, return them
+                if final_state.as_deref() == Some("FINISHED") && !log_rows.is_empty() {
+                    let result_rows: Vec<Value> = log_rows
+                        .iter()
+                        .filter_map(|row| {
+                            let msg = row
+                                .get("message")
+                                .or_else(|| row.get("log_message"))
+                                .and_then(Value::as_str)
+                                .unwrap_or("");
+                            if msg.is_empty() {
+                                return None;
+                            }
+                            if let Ok(parsed) = serde_json::from_str::<Value>(msg) {
+                                Some(parsed)
+                            } else {
+                                Some(serde_json::json!({"output": msg}))
+                            }
+                        })
+                        .collect();
+                    return Ok(result_rows);
                 }
             }
         }

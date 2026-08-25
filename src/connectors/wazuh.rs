@@ -689,7 +689,10 @@ mod tests {
         assert_eq!(manager.status.as_deref(), Some("active"));
         assert_eq!(manager.os_name.as_deref(), Some("Amazon Linux"));
         assert_eq!(manager.os_version.as_deref(), Some("2023"));
-        assert_eq!(manager.os_uname.as_deref(), Some("Linux |manager-master-0 |6.8.0-136-generic"));
+        assert_eq!(
+            manager.os_uname.as_deref(),
+            Some("Linux |manager-master-0 |6.8.0-136-generic")
+        );
         // Group is absent on the manager row → empty vec, not an error.
         assert!(manager.groups.is_empty());
 
@@ -698,7 +701,10 @@ mod tests {
         assert_eq!(agent.name, "web-server-01-agent");
         assert_eq!(agent.ip.as_deref(), Some("10.0.0.4"));
         assert_eq!(agent.os_platform.as_deref(), Some("ubuntu"));
-        assert_eq!(agent.os_uname.as_deref(), Some("Linux |web-server-01 |6.8.0-136-generic"));
+        assert_eq!(
+            agent.os_uname.as_deref(),
+            Some("Linux |web-server-01 |6.8.0-136-generic")
+        );
         assert_eq!(agent.version.as_deref(), Some("Wazuh v4.14.5"));
         assert_eq!(agent.groups, vec!["docker".to_string()]);
         assert_eq!(
